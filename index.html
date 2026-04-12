@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Калькулятор облигаций — Инвестиции просто</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>
+  :root {
+    --green: #0C6B58;
+    --green-light: #0e7d68;
+    --green-bg: rgba(12,107,88,0.06);
+    --green-border: rgba(12,107,88,0.15);
+    --green-border-strong: rgba(12,107,88,0.3);
+    --black: #1a1a1a;
+    --dark: #333333;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --bg-card: #f9fafb;
+    --bg-page: #ffffff;
+    --white: #ffffff;
+    --warm: #92400e;
+    --warm-bg: rgba(146,64,14,0.06);
+    --warm-border: rgba(146,64,14,0.15);
+    --red: #b91c1c;
+    --red-bg: rgba(185,28,28,0.04);
+    --red-border: rgba(185,28,28,0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-page); color: var(--black);
+    min-height: 100vh; padding: 0 0 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* HEADER */
+  .header {
+    padding: 28px 20px 20px; display: flex; align-items: center; gap: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-logo {
+    width: 44px; height: 44px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .header-logo svg { width: 44px; height: 28px; }
+  .header h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--black); }
+  .header p { font-size: 12px; color: var(--muted); margin-top: 2px; letter-spacing: 0.3px; text-transform: uppercase; font-weight: 500; }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 16px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-top: 16px;
+  }
+
+  .tab {
+    padding: 12px 16px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-size: 14px;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+
+  .tab.active {
+    color: var(--black);
+    border-bottom-color: var(--green);
+  }
+
+  .tab:hover:not(.active) {
+    color: var(--dark);
+  }
+
+  /* SECTION CONTENT */
+  .section {
+    display: none;
+  }
+
+  .section.active {
+    display: block;
+  }
+
+  /* INPUT STYLES */
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .input-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dark);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  input, select {
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    transition: all 0.2s;
+  }
+
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--green);
+    background: var(--bg-page);
+  }
+
+  input::placeholder {
+    color: var(--muted);
+  }
+
+  /* BUTTON STYLES */
+  .button {
+    padding: 14px 20px;
+    background: var(--green);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .button:hover {
+    background: var(--green-light);
+  }
+
+  .button:active {
+    transform: scale(0.98);
+  }
+
+  .button.secondary {
+    background: var(--bg-card);
+    color: var(--dark);
+    border: 1px solid var(--border);
+  }
+
+  .button.secondary:hover {
+    background: #f0f1f3;
+  }
+
+  /* CALCULATOR SECTION */
+  .calculator-container {
+    padding: 20px;
+    max-width: 100%;
+  }
+
+  .params-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 600px) {
+    .params-section {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--black);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .result {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--green);
+    margin-top: 8px;
+  }
+
+  .result.currency {
+    font-size: 20px;
+  }
+
+  .result.small {
+    font-size: 16px;
+  }
+
+  .description {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.4;
+  }
+
+  /* CHART */
+  #paymentChart {
+    max-height: 400px;
+    margin-top: 16px;
+  }
+
+  .chart-container {
+    position: relative;
+    height: 300px;
+    margin-top: 16px;
+  }
+
+  /* FOOTER */
+  .footer {
+    padding: 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+    margin-top: 24px;
+  }
+
+  /* DISCLAIMER POPUP */
+  .disclaimer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    padding: 16px 20px;
+    z-index: 100;
+  }
+
+  .disclaimer-content {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .disclaimer button {
+    margin-top: 12px;
+    padding: 10px 16px;
+    font-size: 12px;
+  }
+
+  /* WARNING STYLES */
+  .warning-box {
+    background: var(--warm-bg);
+    border: 1px solid var(--warm-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+
+  .warning-box .card-title {
+    color: var(--warm);
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+
+  .warning-box .description {
+    color: var(--warm);
+  }
+
+  /* ERROR STYLES */
+  .error-box {
+    background: var(--red-bg);
+    border: 1px solid var(--red-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+
+  .error-box .card-title {
+    color: var(--red);
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+
+  .error-box .description {
+    color: var(--red);
+  }
+
+  .green-bg {
+    background: var(--green-bg);
+  }
+
+  .green-border {
+    border-color: var(--green-border);
+  }
+
+  .table-container {
+    overflow-x: auto;
+    margin-top: 16px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  table th {
+    background: var(--bg-card);
+    padding: 10px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+
+  table td {
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  table tr:last-child td {
+    border-bottom: none;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-logo">
+      <svg viewBox="0 0 44 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="44" height="28" rx="6" fill="var(--green)"></rect>
+        <text x="8" y="20" font-size="16" font-weight="800" fill="white">Б</text>
+      </svg>
+    </div>
+    <div>
+      <h1>Облигации</h1>
+      <p>Калькулятор доходности</p>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="simple">Простой</button>
+    <button class="tab" data-tab="detailed">Подробный</button>
+    <button class="tab" data-tab="comparison">Сравнение</button>
+  </div>
+
+  <div id="simple" class="section active">
+    <div class="calculator-container">
+      <div class="warning-box" id="warningBox" style="display:none;">
+        <div class="card-title">Внимание</div>
+        <div class="description" id="warningText"></div>
+      </div>
+
+      <div class="error-box" id="errorBox" style="display:none;">
+        <div class="card-title">Ошибка</div>
+        <div class="description" id="errorText"></div>
+      </div>
+
+      <div class="params-section">
+        <div class="input-group">
+          <label for="nominal">Номинальная стоимость (₽)</label>
+          <input type="number" id="nominal" placeholder="1000" value="1000" min="0.01" step="0.01">
+        </div>
+
+        <div class="input-group">
+          <label for="currentPrice">Текущая цена (₽)</label>
+          <input type="number" id="currentPrice" placeholder="950" value="950" min="0.01" step="0.01">
+        </div>
+
+        <div class="input-group">
+          <label for="coupon">Годовой купон (% или ₽)</label>
+          <input type="text" id="coupon" placeholder="5% или 50" value="5%">
+        </div>
+
+        <div class="input-group">
+          <label for="yearsToMaturity">Лет до погашения</label>
+          <input type="number" id="yearsToMaturity" placeholder="3" value="3" min="0.01" step="0.01">
+        </div>
+
+        <div class="input-group">
+          <label for="couponFrequency">Периодичность выплат</label>
+          <select id="couponFrequency">
+            <option value="1">Один раз в год</option>
+            <option value="2">Раз в полугодие</option>
+            <option value="4">Раз в квартал</option>
+            <option value="12">Ежемесячно</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label for="taxRate">Налог на купон (%)</label>
+          <input type="number" id="taxRate" placeholder="13" value="13" min="0" max="100" step="0.1">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <button class="button" onclick="recalc()">Рассчитать</button>
+        <button class="button secondary" onclick="resetFields()">Сбросить</button>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <div class="card-title">Чистая доходность (YTM)</div>
+        <div class="result currency" id="yieldResult">--</div>
+        <div class="description">Эффективная годовая доходность с учётом налогов</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Простая доходность</div>
+        <div class="result currency" id="simpleYield">--</div>
+        <div class="description">Годовая доходность без учёта купонов при погашении</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Курс облигации</div>
+        <div class="result small" id="bondPrice">--</div>
+        <div class="description">Текущая цена в процентах от номинала</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Накопленный купонный доход (НКД)</div>
+        <div class="result small" id="accruedInterest">--</div>
+        <div class="description">Доход, накопленный с момента последней выплаты</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Полная цена (P+NKD)</div>
+        <div class="result small" id="fullPrice">--</div>
+        <div class="description">Цена облигации с накопленным купонным доходом</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Годовой доход в ₽</div>
+        <div class="result small" id="annualIncome">--</div>
+        <div class="description">Средний годовой доход в рублях</div>
+      </div>
+    </div>
+  </div>  <div id="detailed" class="section">
+    <div class="calculator-container">
+      <h3 style="color: var(--dark); font-size: 16px; margin-bottom: 16px; font-weight: 700;">Подробный анализ платежей</h3>
+
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-title">График платежей</div>
+        <div class="table-container">
+          <table id="paymentsTable">
+            <thead>
+              <tr>
+                <th>№ платежа</th>
+                <th>Дата платежа</th>
+                <th>Купон (₽)</th>
+                <th>Купон (налог)</th>
+                <th>Купон (чистый)</th>
+                <th>Погашение</th>
+                <th>Всего</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Диаграмма платежей</div>
+        <div class="chart-container">
+          <canvas id="paymentChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="comparison" class="section">
+    <div class="calculator-container">
+      <h3 style="color: var(--dark); font-size: 16px; margin-bottom: 16px; font-weight: 700;">Сравнение сценариев</h3>
+
+      <div class="params-section">
+        <div class="input-group">
+          <label>Вариант 1 (₽)</label>
+          <input type="number" id="compPrice1" placeholder="950" value="950" min="0.01" step="0.01">
+        </div>
+
+        <div class="input-group">
+          <label>Вариант 2 (₽)</label>
+          <input type="number" id="compPrice2" placeholder="1000" value="1000" min="0.01" step="0.01">
+        </div>
+      </div>
+
+      <button class="button" onclick="compareScenarios()" style="margin-bottom: 20px;">Сравнить</button>
+
+      <div class="card" id="comparisonResult" style="display:none;">
+        <div class="card-title">Результат сравнения</div>
+        <div id="comparisonText" style="font-size: 14px; line-height: 1.6; color: var(--dark);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>Инвестируй внимательно. Не является финансовой рекомендацией.</p>
+  </div>
+
+  <script>
+    function formatCurrency(value) {
+      return new Intl.NumberFormat('ru-RU', {
+        style: 'currency',
+        currency: 'RUB',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(value);
+    }
+
+    function formatPercent(value) {
+      return (value * 100).toFixed(2) + '%';
+    }
+
+    function parseCoupon(couponInput) {
+      const trimmed = couponInput.trim();
+      if (trimmed.endsWith('%')) {
+        return parseFloat(trimmed) / 100;
+      }
+      return parseFloat(trimmed) / parseFloat(document.getElementById('nominal').value);
+    }
+
+    function recalc() {
+      try {
+        // Clear previous errors/warnings
+        document.getElementById('errorBox').style.display = 'none';
+        document.getElementById('warningBox').style.display = 'none';
+
+        const nominal = parseFloat(document.getElementById('nominal').value);
+        const currentPrice = parseFloat(document.getElementById('currentPrice').value);
+        const couponInput = document.getElementById('coupon').value;
+        const yearsToMaturity = parseFloat(document.getElementById('yearsToMaturity').value);
+        const couponFrequency = parseInt(document.getElementById('couponFrequency').value);
+        const taxRate = parseFloat(document.getElementById('taxRate').value) / 100;
+
+        // Validation
+        if (isNaN(nominal) || nominal <= 0) throw new Error('Номинальная стоимость должна быть больше 0');
+        if (isNaN(currentPrice) || currentPrice <= 0) throw new Error('Текущая цена должна быть больше 0');
+        if (isNaN(yearsToMaturity) || yearsToMaturity <= 0) throw new Error('Время до погашения должно быть больше 0');
+        if (couponInput.trim() === '') throw new Error('Укажите купон');
+
+        const couponRate = parseCoupon(couponInput);
+        const couponAmount = nominal * couponRate;
+        const totalPeriods = Math.round(yearsToMaturity * couponFrequency);
+        const periodicRate = couponRate / couponFrequency;
+
+        // Check for invalid conditions
+        if (currentPrice > nominal * 1.5) {
+          document.getElementById('warningBox').style.display = 'block';
+          document.getElementById('warningText').textContent = 'Цена облигации значительно выше номинала. Проверьте данные.';
+        }
+
+        // Calculate YTM (yield to maturity)
+        let ytm = periodicRate; // Initial guess
+        for (let i = 0; i < 100; i++) { // Newton-Raphson iterations
+          const pv = calculatePV(couponAmount, nominal, ytm, couponFrequency, yearsToMaturity);
+          const dvdy = calculateDVDY(couponAmount, nominal, ytm, couponFrequency, yearsToMaturity);
+          if (Math.abs(dvdy) < 1e-10) break;
+          ytm = ytm - (pv - currentPrice) / dvdy;
+          if (ytm < -0.5 || ytm > 2) {
+            ytm = 0.05; // Reset if diverging
+            break;
+          }
+        }
+
+        const netCoupon = couponAmount * (1 - taxRate);
+        const simpleYield = ((netCoupon + (nominal - currentPrice) / yearsToMaturity) / currentPrice) * 100;
+
+        // Update results
+        document.getElementById('yieldResult').textContent = (ytm * 100).toFixed(2) + '%';
+        document.getElementById('simpleYield').textContent = simpleYield.toFixed(2) + '%';
+        document.getElementById('bondPrice').textContent = (currentPrice / nominal * 100).toFixed(2) + '%';
+        document.getElementById('accruedInterest').textContent = '0 ₽'; // Simplified
+        document.getElementById('fullPrice').textContent = formatCurrency(currentPrice);
+        document.getElementById('annualIncome').textContent = formatCurrency(netCoupon);
+
+        // Update detailed section
+        updatePaymentsTable(couponAmount, nominal, couponFrequency, totalPeriods, taxRate);
+        updateChart(couponAmount, nominal, couponFrequency, totalPeriods);
+
+      } catch (error) {
+        document.getElementById('errorBox').style.display = 'block';
+        document.getElementById('errorText').textContent = error.message;
+      }
+    }
+
+    function calculatePV(couponAmount, nominal, rate, frequency, years) {
+      const periods = years * frequency;
+      const periodicRate = rate / frequency;
+      let pv = 0;
+
+      for (let i = 1; i <= periods; i++) {
+        pv += couponAmount / frequency / Math.pow(1 + periodicRate, i);
+      }
+      pv += nominal / Math.pow(1 + periodicRate, periods);
+
+      return pv;
+    }
+
+    function calculateDVDY(couponAmount, nominal, rate, frequency, years) {
+      const periods = years * frequency;
+      const periodicRate = rate / frequency;
+      const h = 0.0001;
+      const pv1 = calculatePV(couponAmount, nominal, rate - h, frequency, years);
+      const pv2 = calculatePV(couponAmount, nominal, rate + h, frequency, years);
+      return (pv2 - pv1) / (2 * h);
+    }
+
+    function updatePaymentsTable(couponAmount, nominal, frequency, periods, taxRate) {
+      const tbody = document.querySelector('#paymentsTable tbody');
+      tbody.innerHTML = '';
+
+      for (let i = 1; i <= periods; i++) {
+        const row = tbody.insertRow();
+        const coupon = couponAmount / frequency;
+        const tax = coupon * taxRate;
+        const netCoupon = coupon - tax;
+        const redemption = i === periods ? nominal : 0;
+        const total = netCoupon + redemption;
+
+        row.innerHTML = `
+          <td>${i}</td>
+          <td>${new Date(Date.now() + i * 365 / frequency * 86400000).toLocaleDateString('ru-RU')}</td>
+          <td>${coupon.toFixed(2)}</td>
+          <td>${tax.toFixed(2)}</td>
+          <td>${netCoupon.toFixed(2)}</td>
+          <td>${redemption.toFixed(2)}</td>
+          <td>${total.toFixed(2)}</td>
+        `;
+      }
+    }
+
+    function updateChart(couponAmount, nominal, frequency, periods) {
+      const ctx = document.getElementById('paymentChart');
+      if (!ctx) return;
+
+      const labels = [];
+      const amounts = [];
+
+      for (let i = 1; i <= Math.min(periods, 50); i++) {
+        labels.push(`${i}`);
+        const coupon = couponAmount / frequency;
+        amounts.push(i === periods ? coupon + nominal : coupon);
+      }
+
+      if (window.chart) {
+        window.chart.destroy();
+      }
+
+      window.chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Платёж (₽)',
+            data: amounts,
+            backgroundColor: 'var(--green)',
+            borderColor: 'var(--green)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: 'var(--muted)',
+                font: { size: 11 }
+              },
+              grid: {
+                color: 'var(--border)',
+                drawBorder: false
+              }
+            },
+            x: {
+              ticks: {
+                color: 'var(--muted)',
+                font: { size: 11 }
+              },
+              grid: {
+                display: false
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function compareScenarios() {
+      try {
+        const price1 = parseFloat(document.getElementById('compPrice1').value);
+        const price2 = parseFloat(document.getElementById('compPrice2').value);
+
+        if (isNaN(price1) || isNaN(price2)) throw new Error('Укажите оба варианта цены');
+
+        const nominal = parseFloat(document.getElementById('nominal').value);
+        const diff = price2 - price1;
+        const diffPercent = (diff / price1) * 100;
+
+        document.getElementById('comparisonResult').style.display = 'block';
+        document.getElementById('comparisonText').innerHTML = `
+          <strong>Вариант 1:</strong> ${formatCurrency(price1)} (${(price1/nominal*100).toFixed(2)}%)<br>
+          <strong>Вариант 2:</strong> ${formatCurrency(price2)} (${(price2/nominal*100).toFixed(2)}%)<br>
+          <strong>Разница:</strong> ${formatCurrency(Math.abs(diff))} (${diffPercent.toFixed(2)}%)<br>
+          <strong>Вывод:</strong> ${diffPercent > 0 ? 'Вариант 2 дороже' : 'Вариант 1 дороже'}
+        `;
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    function resetFields() {
+      document.getElementById('nominal').value = '1000';
+      document.getElementById('currentPrice').value = '950';
+      document.getElementById('coupon').value = '5%';
+      document.getElementById('yearsToMaturity').value = '3';
+      document.getElementById('couponFrequency').value = '1';
+      document.getElementById('taxRate').value = '13';
+      recalc();
+    }
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        
+        this.classList.add('active');
+        const sectionId = this.getAttribute('data-tab');
+        document.getElementById(sectionId).classList.add('active');
+      });
+    });
+
+    // Initialize
+    if (window.Telegram && window.Telegram.WebApp) {
+      const tg = window.Telegram.WebApp;
+      tg.ready();
+      tg.expand();
+    }
+
+    recalc();
+  </script>
+</body>
+</html>
