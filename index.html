@@ -232,8 +232,17 @@
   .moex-search-btn:hover { background: var(--green-light); }
   .moex-search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .moex-results {
-    margin-top: 10px; max-height: 280px; overflow-y: auto;
+    margin-top: 10px; max-height: 450px; overflow-y: auto;
+    scroll-behavior: smooth;
   }
+  .moex-show-all-btn {
+    display: block; width: 100%; margin-top: 6px; padding: 12px;
+    background: var(--green-bg); border: 1.5px dashed var(--green-border-strong);
+    border-radius: 10px; color: var(--green); font-size: 13px;
+    font-weight: 700; cursor: pointer; font-family: inherit;
+    transition: all 0.2s; letter-spacing: 0.2px;
+  }
+  .moex-show-all-btn:hover { background: var(--green); color: var(--white); border-style: solid; }
   .moex-item {
     padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
     margin-bottom: 6px; cursor: pointer; transition: all 0.15s;
@@ -529,7 +538,7 @@ const HINTS = {
   duration: "<b>Дюрация</b> — средневзвешенный срок получения всех денег (купонов + номинала). Измеряется в годах.<br><br>Чем больше дюрация — тем сильнее цена облигации реагирует на изменение ставок ЦБ.",
   modDuration: "<b>Модифицированная дюрация</b> — показывает, на сколько % изменится цена облигации при изменении доходности на 1%.<br><br>Пример: мод. дюрация 5 = цена упадёт ~5% при росте ставки на 1%.",
   taxCoupon: "<b>НДФЛ на купоны</b> — с 2021 года все купоны облигаций облагаются НДФЛ 13%. Если годовой доход > 5 млн ₽ — ставка 15% на сумму превышения.",
-  taxPrice: "<b>НДФЛ на разницу цены</b> — если вы продаёте (или гасите) облигацию дороже, чем купили — разница облагается НДФЛ 13% (15% при доходе > 5 млн ₽). Убытки можно зачесть.",
+  taxPrice: "<b>НДФЛ на разницу цены</b> — если вы продаёте (или гасите) облигацию дороже, чем купили — вазница облагается НДФЛ 13% (15% при доходе > 5 млн ₽). Убытки можно зачесть.",
 };
 
 // ==================== MOEX ISS API ====================
@@ -559,7 +568,7 @@ async function searchMoex(query) {
   results.innerHTML = '';
 
   try {
-    var url = MOEX_BASE + '/securities.json?q=' + encodeURIComponent(query.trim()) + '&limit=10&iss.meta=off&group_by_filter=stock_bonds';
+    var url = MOEX_BASE + '/securities.json?q=' + encodeURIComponent(query.trim()) + '&limit=100&iss.meta=off&group_by_filter=stock_bonds';
     var data = await moexFetch(url);
 
     var cols = data.securities.columns;
@@ -573,22 +582,23 @@ async function searchMoex(query) {
       return;
     }
 
-    var bonds = rows.map(function(r) {
+    // Преобразуем все строки в объекты
+    var allBonds = rows.map(function(r) {
       var d = {};
       cols.forEach(function(c, i) { d[c] = r[i]; });
       return d;
-    }).filter(function(d) {
+    });
+
+    // group_by_filter=stock_bonds уже фильтрует на стороне MOEX,
+    // но на всякий случай отделяем облигации от остального
+    var bonds = allBonds.filter(function(d) {
       return d.group === 'stock_bonds' || (d.type && d.type.indexOf('bond') >= 0) || (d.group && d.group.indexOf('bond') >= 0);
     });
 
-    if (bonds.length === 0) {
-      var allItems = rows.map(function(r) { var d = {}; cols.forEach(function(c,i) { d[c] = r[i]; }); return d; });
-      renderMoexResults(allItems);
-      status.textContent = 'Найдено: ' + allItems.length;
-    } else {
-      renderMoexResults(bonds);
-      status.textContent = 'Найдено: ' + bonds.length;
-    }
+    // Если фильтр отсёк всё — показываем все результаты
+    var toShow = bonds.length > 0 ? bonds : allBonds;
+    renderMoexResults(toShow);
+    status.textContent = 'Найдено облигаций: ' + toShow.length + (toShow.length >= 100 ? ' (уточните запрос)' : '');
     status.className = 'moex-status success';
   } catch (err) {
     status.textContent = 'Не удалось подключиться. Проверьте интернет или введите данные вручную.';
@@ -600,479 +610,458 @@ async function searchMoex(query) {
   btn.textContent = 'Найти';
 }
 
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function renderMoexResults(bonds) {
   var results = document.getElementById('moexResults');
-  results.innerHTML = bonds.slice(0, 8).map(function(b) {
-    return '<div class="moex-item" onclick="loadBondFromMoex(\'' + (b.secid || '') + '\')">' +
-      '<span class="moex-item-name">' + (b.shortname || b.name || 'Без названия') + '</span>' +
-      '<span class="moex-item-ticker">' + (b.secid || '') + '</span>' +
-      '<div class="moex-item-details">' + (b.name || '') + '</div>' +
+  var INITIAL_SHOW = 15;
+  var showAll = bonds.length <= INITIAL_SHOW;
+  var toRender = showAll ? bonds : bonds.slice(0, INITIAL_SHOW);
+
+  results.innerHTML = toRender.map(function(b) {
+    var secid = escHtml(b.secid || '');
+    var shortname = escHtml(b.shortname || b.name || 'Без названия');
+    var fullname = escHtml(b.name || '');
+    var isin = b.isin ? ' · ISIN: ' + escHtml(b.isin) : '';
+    return '<div class="moex-item" onclick="loadBondFromMoex(\'' + secid + '\')">' +
+      '<span class="moex-item-name">' + shortname + '</span>' +
+      '<span class="moex-item-ticker">' + secid + '</span>' +
+      '<div class="moex-item-details">' + fullname + isin + '</div>' +
     '</div>';
   }).join('');
+
+  if (!showAll) {
+    var remaining = bonds.length - INITIAL_SHOW;
+    results.innerHTML += '<button class="moex-show-all-btn" id="moexShowAllBtn">Показать ещё ' + remaining + '</button>';
+    document.getElementById('moexShowAllBtn').addEventListener('click', function() {
+      // Рендерим остаток
+      var rest = bonds.slice(INITIAL_SHOW).map(function(b) {
+        var secid = escHtml(b.secid || '');
+        var shortname = escHtml(b.shortname || b.name || 'Без названия');
+        var fullname = escHtml(b.name || '');
+        var isin = b.isin ? ' · ISIN: ' + escHtml(b.isin) : '';
+        return '<div class="moex-item" onclick="loadBondFromMoex(\'' + secid + '\')">' +
+          '<span class="moex-item-name">' + shortname + '</span>' +
+          '<span class="moex-item-ticker">' + secid + '</span>' +
+          '<div class="moex-item-details">' + fullname + isin + '</div>' +
+        '</div>';
+      }).join('');
+      this.remove();
+      results.insertAdjacentHTML('beforeend', rest);
+    });
+  }
 }
 
 // Выбираем лучшую строку из нескольких бордов MOEX
 function pickBestRow(cols, rows, preferBoards) {
   if (!rows || rows.length === 0) return null;
-  var biIdx = cols.indexOf('BOARDID');
-  // Ищем строку с предпочтительным бордом
-  if (biIdx >= 0 && preferBoards) {
-    for (var p = 0; p < preferBoards.length; p++) {
-      for (var r = 0; r < rows.length; r++) {
-        if (rows[r][biIdx] === preferBoards[p]) {
-          var obj = {}; cols.forEach(function(c, i) { obj[c] = rows[r][i]; }); return obj;
-        }
-      }
-    }
-  }
-  // Фоллбэк: первая строка с ненулевыми данными
-  for (var r = 0; r < rows.length; r++) {
-    var obj = {}; cols.forEach(function(c, i) { obj[c] = rows[r][i]; });
-    if (obj.MATDATE || obj.COUPONPERCENT || obj.FACEVALUE) return obj;
-  }
-  // Совсем фоллбэк — первая строка
-  var obj = {}; cols.forEach(function(c, i) { obj[c] = rows[0][i]; }); return obj;
-}
+  var biIdxH��˚[�^ي	Г�T�Q	�N��4&4bt-t/4`t`�`4/�.�`�4`H4/�`4-t-4/�/�a�`�.4`�-t.�c4/tb�/4,t/�`4-4/�/�Y�
+�RY�H	���Y�\���\��H�܈
+�\�H��Y�\���\�˛[���
+��H�܈
+�\��H�����˛[������HY�
+����ܗVؚRYHOOH�Y�\���\���JH�\�ؚ�H�N���˙�ܑXX�
+�[��[ۊ�JH�ؚ���HH����ܗV�WN�JN��]\��ؚ�B�B�B�B���4)4/�.�.�,tct.��4/�-t`4,�,4c�4`t`�`4/�.�,4`H4/t-t/t`�.�-t,�b�/4.4-4,4/t/tb�/4.��܈
+�\��H�����˛[������H�\�ؚ�H�N���˙�ܑXX�
+�[��[ۊ�JH�ؚ���HH����ܗV�WN�JNY�
+ؚ��PUUHؚ����TӔT��S�ؚ���P�U�SQJH�]\��ؚ�B���4(t/�,�`t-t/4a4/�.�.�,tct.�8�%4/�-t`4,�,4c�4`t`�`4/�.�,��\�ؚ�H�N���˙�ܑXX�
+�[��[ۊ�JH�ؚ���HH�����V�WN�JN��]\��ؚ�B��\�[���[��[ۈ�Y�ۙ���S[�^
+�X�Y
+H�\��]\�H��[Y[���][[Y[��RY
+	�[�^�]\��N�\��\�[�H��[Y[���][[Y[��RY
+	�[�^�\�[��N��]\˝^�۝[�H	�%�,4,�`4`�-�,4c�	�
+��X�Y
+�	ˋ����]\˘�\�Ә[YHH	�[�^\�]\����H�\�\�HS�VАT�H
+�	��[��[�\�������X\��]�؛ۙ���X�\�]Y\���
+��X�Y
+�	˚��ۏ�\�˛Y]O[ٙ���\�]HH]�Z][�^�]�
+\�
+N��\��X����H]K��X�\�]Y\˘��[[���\��Xԛ���H]K��X�\�]Y\˙]NY�
+\�Xԛ����Xԛ��˛[��OOH
+H����]�\��܊	�'t-t`�4-4,4/t/tb�aI�N���4'�`4-t-4/�/�a�`�.4`�-t.�c4/tb�-H4,t/�`4-4bΈSЈ
+4'�)4%�KPЈ
+4.�/�`4/ˊKRT�
+4'�)4%�t&4'JKTSЋ�Ђ��\��Y���\��H��SЉ�	�PЉ�	�RT��	�TSЉ�	��Љ�	�S�	�N�\��X�HX�Й\�����X�����Xԛ����Y���\��N��\�Y���H]K�X\��]]K���[[���\�Y����H]K�X\��]]K�]N�\�YHX�Й\����Y���Y�����Y���\��H�N��ۜ��K���	�S�V�XΉ���Ӌ���[��Y�J�X�JN�ۜ��K���	�S�VY����Ӌ���[��Y�JY
+JN���4%�,4/�/�.�/tc�-t/4a4/�`4/4`Y�
+�Xˑ�P�U�SQJH��[Y[���][[Y[��RY
+	ۛ�Z[�[	�K��[YHH�Xˑ�P�U�SQNY�
+�Xː��TӔT��S�OH�[	���Xː��TӔT��S�OOH	��H��[Y[���][[Y[��RY
+	���\۔�]I�K��[YHH�Xː��TӔT��S�B��Y�
+�Xː��TӔT�S�	���Xː��TӔT�S��
+H�\���\HHX]���[�
+͍H��Xː��TӔT�S�
+N��[Y[���][[Y[��RY
+	���\ۑ��\I�K��[YHH��\H����\H��B����4)�-t/t,�4,t-t`4dt/T���U�Q�S���T�P�H��U��P�H
+4,�`tdH4,�	H4/�`�4/t/�/4.4/t,4.�,
+B��\��X�HH�[Y�
+Y�T�	��Y�T��
+H�X�HHY�T�[�HY�
+Y��U�Q�S���T�P�H	��Y��U�Q�S���T�P�H�
+H�X�HHY��U�Q�S���T�P�N[�HY�
+�X˔�U��P�H	���X˔�U��P�H�
+H�X�HH�X˔�U��P�N[�HY�
+�X˔�U��T�P�H	���X˔�U��T�P�H�
+H�X�HH�X˔�U��T�P�NY�
+�X�JH��[Y[���][[Y[��RY
+	��\��[��X�I�K��[YHH�X�N�Y�
+�X˓PUUJH��[Y[���][[Y[��RY
+	�X]\�]Q]I�K��[YHH�X˓PUUNY�
+�X˓ё�T�UJH��[Y[���][[Y[��RY
+	�ٙ�\�]I�K��[YHH�X˓ё�T�UN���[Y[���][[Y[��RY
+	�\��\�Q]I�K��[YHH�]�]J
+K��T����[��
+K��]
+	�	�V�N���4%4,4`�,4/�/�`t.�-t-4/t-t,�/�4.�`�/�/�/t,4.4-��V��TӈH��TӔT�S��Y�
+�X˓�V��Tӈ	���Xː��TӔT�S�
+H�\��^H�]�]J�X˓�V��TӊN�\�\�H�]�]J�^
+N\���]]J\���]]J
+HH�Xː��TӔT�S�
+N��[Y[���][[Y[��RY
+	�\���\ۑ]I�K��[YHH\���T����[��
+K��]
+	�	�V�N��4(t/�at`4,4/tc�-t/�V��Tӈ4-4.�c�4,t/�.�-t-H4`�/�a�/t/�,�/�4`4,4`ta�dt`�,��[��˗�[�^�^��\ۈH�X˓�V��Tӎ�[��˗�[�^��\۔\�[�H�Xː��TӔT�S�B���X�[�
+N��\��ۙ�[YHH\��[
+�X˔�ԕ�SQH�X˔�PӐSQH�X�Y
+N�\�[˚[��\�SH	�]��\��H�[�^Z][H��[OH��ܙ\�X��܎��\�KYܙY[�NؘX��ܛ�[���\�KYܙY[�X��N��\��܎�Y�][���
+	��[��\��H�[�^Z][K[�[YH���
+��ۙ�[YH
+�	���[��	�
+	��[��\��H�[�^Z][K]X��\����
+�\��[
+�X�Y
+H
+�	���[���
+	�]��\��H�[�^Z][KY]Z[ȏ��
+	�'t/�/4.4/t,4.Έ	�
+�
+�Xˑ�P�U�SQH	��%	�H
+�	�8��H0��4&�`�/�/�/N�	�
+�
+�Xː��TӔT��S�	��%	�H
+�	�H0��4)�-t/t,�	�
+�
+�X�H	��%	�H
+�	�H0��4'�/�,�,4b4-t/t.4-N�	�
+�\��[
+�X˓PUUH	��%	�H
+
+�X˓ё�T�UH�	�0��4'�a4-t`4`�,�	�
+�\��[
+�X˓ё�T�UJH�	��H
+
+Y�RQS�	�0��UHS�V�	�
+��[X�\�Y�RQS
+K�њ^Y
+�H
+�	�I��	��H
+	��]���
+	��]�����]\˝^�۝[�H	�%4,4/t/tb�-H4-�,4,�`4`�-�-t/tb�4`HS�V
+	�
+�
+�Xː��T�Q	��H
+�	�I��]\˘�\�Ә[YHH	�[�^\�]\��X��\����H�]�
+\��H�]\˝^�۝[�H	�'t-H4`�-4,4.�/�`tc4-�,4,�`4`�-�.4`�c	�
+��X�Y
+�	ˈ4$�,�-t-4.4`�-H4-4,4/t/tb�-H4,�`4`�a�/t`�c����]\˘�\�Ә[YHH	�[�^\�]\�\��܉��ۜ��K�\��܊	�S�V�Y\��܎��\��NB�B���[��[ۈ���[�
+�^K]�
+HY�
+]�
+H�]���]�[�Y�][
 
-async function loadBondFromMoex(secid) {
-  var status = document.getElementById('moexStatus');
-  var results = document.getElementById('moexResults');
+N�]������Y�][ۊ
+N�B��ۜ�^HS����^WNY�
+]^
+H�]\����[Y[���][[Y[��RY
+	�[�^	�K�[��\�SH^��[Y[���][[Y[��RY
+	�[��\	�K��\��\��Y
+	�����NB��[��[ۈ���R[�
+]�
+HY�
+]�
+H�]���]�[�Y�][
 
-  status.textContent = 'Загружаю ' + secid + '...';
-  status.className = 'moex-status';
+N�]������Y�][ۊ
+N�B���[Y[���][[Y[��RY
+	�[��\	�K��\��\���[[ݙJ	�����NB����4't,4-�/t,4a�,4-t/4/�,t`4,4,t/�`�a�.4.�.4/t,4,�`t-H4.�/t/�/�.�.t/�/�-4`t.�,4-�.�.4a�-t`4-t-���
+4/t,4-4dt-�/t-t-H[�[�Hۘ�X��B���[Y[��Y]�[�\�[�\�	��P�۝[��YY	��[��[ۊ
+H��4&�/t/�/�.�.4/�/�-4`t.�,4-�/�.����[Y[��]Y\�T�[X�ܐ[
+	˚[�X���K��ܑXX�
+�[��[ۊ��H�\��^HH����]]�X�]J	�]KZ[�	�NY�
+�^JH���Y]�[�\�[�\�	��X����[��[ۊJH����[�
+�^KJN�JN���Y]�[�\�[�\�	��X�[�	��[��[ۊJH����[�
+�^KJN�JNB�JN��4%�,4.�`4b�`�.4-H�\���[Y[���][[Y[��RY
+	�[��\	�K�Y]�[�\�[�\�	��X����[��[ۊJH����R[�
+JN�JN��[Y[���][[Y[��RY
+	�[��۝[���	�K�Y]�[�\�[�\�	��X����[��[ۊJH�K�����Y�][ۊ
+N�JN��[Y[���][[Y[��RY
+	�[����P���K�Y]�[�\�[�\�	��X����[��[ۊJH����R[�
+JN�JN���S�V4/�/�.4`t.����[Y[���][[Y[��RY
+	�[�^�X\�����K�Y]�[�\�[�\�	��X����[��[ۊ
+H�X\��[�^
+��[Y[���][[Y[��RY
+	�[�^�X\��	�K��[YJNJN��[Y[���][[Y[��RY
+	�[�^�X\��	�K�Y]�[�\�[�\�	��^Y�ۉ��[��[ۊJHY�
+K��^HOOH	�[�\��H�K��]�[�Y�][
 
-  try {
-    var url = MOEX_BASE + '/engines/stock/markets/bonds/securities/' + secid + '.json?iss.meta=off';
-    var data = await moexFetch(url);
+N��X\��[�^
+\˝�[YJN�B�JNJN���OOOOOOOOOOOOOOOOOOOHP��OOOOOOOOOOOOOOOOOOOB��[��[ۈ��]�X�X�H��[Y[��]Y\�T�[X�ܐ[
+	˝X��K��ܑXX�
 
-    var secCols = data.securities.columns;
-    var secRows = data.securities.data;
-    if (!secRows || secRows.length === 0) throw new Error('Нет данных');
+JHO���\��\�����J	�X�]�I����[��	���\\�I�	ٛ����V�WHOOHX�JN��[Y[��]Y\�T�[X�ܐ[
+	˝X�X�۝[�	�K��ܑXX�
+O���\��\���[[ݙJ	�X�]�I�JN��[Y[���][[Y[��RY
+	�X�I�
+�X�K��\��\��Y
+	�X�]�I�NY�
+X�OOH	���\\�I�H�[�\���\\�J
+NY�
+X�OOH	ٛ����H�[�\�����
+NB����OOOOOOOOOOOOOOOOOOOH4(4$4(t)� t(�*�OOOOOOOOOOOOOOOOOOOB��[��[ۈ�]�[
+Y
+H��]\��\��Q��]
+��[Y[���][[Y[��RY
+Y
+K��[YJH�B��[��[ۈ�]]JY
+H��]\����[Y[���][[Y[��RY
+Y
+K��[YN�B���[��[ۈ^\Й]�Y[�K�H�]\��X]���[�
 
-    // Предпочтительные борды: TQOB (ОФЗ), TQCB (корп.), TQIR (ОФЗ-ИН), EQOB, PSOB
-    var prefBoards = ['TQOB','TQCB','TQIR','EQOB','PSOB','TQOD'];
-    var sec = pickBestRow(secCols, secRows, prefBoards);
+�]�]J�HH�]�]JJJH�
+�
+NB��[��[ۈYX\���X�K�H��]\��^\Й]�Y[�K�H�͍N�B���[��[ۈ�[��\�������K܋��\K]KQ]JH�ۜ��H
+��H
+�܈�L
+H���\N�ۜ�^\�HX]���[�
+͍H���\JN�ۜ�����H�N�ۜ�\��\�HH�]�]J]JN�ۜ�[�H�]�]JQ]JN���4%t`t.�.4-t`t`�c4-4,4/t/tb�-H4/�4`t.�-t-4`�c�bt-t/4.�`�/�/�/t-H4/�`�S�V8�%4`t`�`4/�.4/4/�`�4/t-t,�/���\��\�]NY�
+�[��˗�[�^�^��\ۈ	���[��˗�[�^��\۔\�[�
+H�\�]HH�]�]J�[��˗�[�^�^��\ۊN��4'�`�.�,4`�b�,�,4-t/4`tc�4/t,4-�,4-4a�`�/�,tb�4/t,4.t`�.4/�-t`4,�b�.H4.�`�/�/�/H4/�/�`t.�-H4/�/�.�`�/�.�.��[H
+�\�]H�\��\�JH�\��]�H�]�]J�\�]JN�]���]]J�]���]]J
+HH�[��˗�[�^��\۔\�[�
+NY�
+�]�H\��\�JH��XZ��\�]HH�]�B���4%t`t.�.�\�]H4/�.�,4-�,4.�`tc�4%4'�4/�/�.�`�/�.�.8�%4,�/�-t`4dt-4/t,H4/�-t`4.4/�-�Y�
+�\�]HH\��\�JH�\�]K��]]J�\�]K��]]J
+H
+��[��˗�[�^��\۔\�[�
+NB�H[�H��4)4/�.�.�,tct.��4/�`�4-4,4`�b�4/�/�.�`�/�.�.
+�4/�-t`4.4/�-��\�]HH�]�]J\��\�JN�\�]K��]]J�\�]K��]]J
+H
+�^\�NB��]H�]�]J�\�]JN�[H
+H[�
+H���˜\�
+�]N��]�]J
+K��\ێ����Z[�[�JNH�]�]J
+N��]]J��]]J
+H
+�
+�[��˗�[�^��\۔\�[�^\�JNB�Y�
+���˛[���
+H����ٛ��˛[��HWK���Z[�[H��N[�H���˜\�
+�]N�[���\ێ����Z[�[���HJN�]\������B���[��[ۈ�[Ӓ�
+��K܋��\K]K�]JH�ۜ��H
+��H
+�܈�L
+H���\N�ۜ�^\�[�\�[�H͍H���\N]^\��[��HH�]H�^\Й]�Y[��]K]JH�Y�
+^\��[��H
+H^\��[��HHY�
+^\��[��H�^\�[�\�[�
+H^\��[��HH^\��[��H	H^\�[�\�[��]\���
+�
+^\��[��H�^\�[�\�[�
+NB���[��[ۈ�[�UJ��K܋��\K�X�T�]KQ]JH��4$�`4c�-�/t,4c�4a�-t/t,H4a�.4`t`�,4c�
+�4't&�%
+4.�,4.�4/t,S�V
+B��ۜ��X[�X��H��H
+��X�T��L�ۜ��]HH�]]J	�\���\ۑ]I�N�ۜ���H�[Ӓ�
+��K܋��\K]K�]JN�ۜ�\�PX��H�X[�X��
+�����ۜ�����H�[��\�������K܋��\K]KQ]JN]]HH
+܈�L
+H�
+N�܈
+]HH�H��J��H]�H�H�܈
+�ۜ��و����H�ۜ�HYX\���X�]K��]JNY�
+H
+H�۝[�YN�ۜ��[H����\ۈ
+�����Z[�[�ۜ�\��HX]���H
+�]K
+N�
+�H�[�\���OH
+��[�
+\��
+�
+H
+�]JJNB��ۜ�Y��H�H\�PX��Y�
+X]�X��Y��H�JH��XZ�Y�
+X]�X���HYKLL
+H��XZ�]HOHY����Y�
+]HL�JH]HHL�NY�
+]H�
+JH]HH
+NB��]\��]H
+�LB���[��[ۈ�[�\�][ۊ��K܋��\K�X�T�]KQ]JH�ۜ�����H�[��\�������K܋��\K]KQ]JN�ۜ�]HH�[�UJ��K܋��\K�X�T�]KQ]JH�L]�[U�H�[T�H�܈
+�ۜ��و����H�ۜ�HYX\���X�]K��]JNY�
+H
+H�۝[�YN�ۜ��[H����\ۈ
+�����Z[�[�ۜ��H�[�X]���H
+�]K
+N�[U�
+�H
+����[T�
+�H�B��ۜ�\�H�[T����[U���[T���]\���\�[�\��\��
+H
+�]H���\JHNB���[��[ۈ�]
+��Y�HY�
+�OOH�[�OOH[�Y�[�Y\ӘS��JH�]\��	��%	��]\���[X�\��K�њ^Y
+�H
+�
+�Y�	��NB���[��[ۈ�X�[�
+H�ۜ���HH�]�[
+	ۛ�Z[�[	�HL�ۜ�܈H�]�[
+	���\۔�]I�N�ۜ���\HH�]�[
+	���\ۑ��\I�H��ۜ��X�HH�]�[
+	��\��[��X�I�HL�ۜ�]HH�]]J	�\��\�Q]I�N�ۜ�Q]HH�]]J	�X]\�]Q]I�N�ۜ��]HH�]]J	�ٙ�\�]I�N�ۜ��]HH�]]J	�\���\ۑ]I�N�ۜ�^H�]�[
+	�^�]I�HL���ۜ��\�ZY[H�X�H��
+܈��X�JH
+�L���[Y[���][[Y[��RY
+	ܙ\�X�\�ZY[	�K�^�۝[�H�]
+�\�ZY[	�I�N��ۜ�]HH�[�UJ��K܋��\K�X�K]KQ]JN��[Y[���][[Y[��RY
+	ܙ\�^]I�K�^�۝[�H�]
+]K	�I�N��ۜ�Y��ZY[H
+X]���H
+�
+]K�L
+H���\K��\JHHJH
+�L��[Y[���][[Y[��RY
+	ܙ\�YY��ZY[	�K�^�۝[�H�]
+Y��ZY[	�I�N�Y�
+�]JH�ۜ�]�H�[�UJ��K܋��\K�X�K]K�]JN��[Y[���][[Y[��RY
+	ܙ\�^]��K�^�۝[�H�]
+]�	�I�N��[Y[���][[Y[��RY
+	ܙ\�^]�\�X��K�^�۝[�H	��H[�H��[Y[���][[Y[��RY
+	ܙ\�^]��K�^�۝[�H	��%	���[Y[���][[Y[��RY
+	ܙ\�^]�\�X��K�^�۝[�H	�(�.�,4-�.4`�-H4-4,4`�`�4/�a4-t`4`�b��B���ۜ���H�[Ӓ�
+��K܋��\K]K�]JN�ۜ��X[��X�HH��H
+��X�H�L�ۜ�\�T�X�HH�X[��X�H
+������[Y[���][[Y[��RY
+	ܙ\�X�X[��X�I�K�^�۝[�H�]
+�X[��X�K	�8��I�N��[Y[���][[Y[��RY
+	ܙ\�[��	�K�^�۝[�H�]
+��	�8��I�N��[Y[���][[Y[��RY
+	ܙ\�Y\�T�X�I�K�^�۝[�H�]
+\�T�X�K	�8��I�N��ۜ��\�[�\�HH�[�\�][ۊ��K܋��\K�X�K]KQ]JN��[Y[���][[Y[��RY
+	ܙ\�Y\�][ۉ�K�^�۝[�H�]
+\�N��[Y[���][[Y[��RY
+	ܙ\�[[�\�][ۉ�K�^�۝[�H�]
+[�\�N��ۜ�YX\��HYX\���X�]KQ]JN�ۜ��[��\ۜ�H
+��H
+�܈�L
+H
+�YX\���ۜ�^��\ۜ�H�[��\ۜ�
+�^�L�ۜ��X�QY��H��HH�X[��X�N�ۜ�^�X�QY��H�X�QY�����X�QY��
+�^�L��ۜ�]PY�\�^H�[�UJ��K܈
+�
+HH^�L
+K��\K�X�K]KQ]JN���[Y[���][[Y[��RY
+	ܙ\�]^��\ۜ��K�^�۝[�H�]
+^��\ۜ�	�8��I�N��[Y[���][[Y[��RY
+	ܙ\�]^�X�I�K�^�۝[�H�]
+^�X�QY��	�8��I�N��[Y[���][[Y[��RY
+	ܙ\�^]PY�\�^	�K�^�۝[�H�]
+]PY�\�^	�I�NB����OOOOOOOOOOOOOOOOOOOH4(t(4$4$�'t%t't&4%HOOOOOOOOOOOOOOOOOOOB�]�ۙ�H��[YN�	�'�)4%�����	�܎�
+ˌK�X�N�
+MKX]\�]N�	̌
+KL
+KLMI���\N��K���[YN�	�'�)4%������܎�L���X�N�MKX]\�]N�	̌�L
+KLNI���\N��K�N]��\\�P�\�[��H�[��[��[ۈY�ۙ
 
-    var mdCols = data.marketdata.columns;
-    var mdRows = data.marketdata.data;
-    var md = pickBestRow(mdCols, mdRows, prefBoards) || {};
+H�ۙ˜\�
+��[YN�	�'�,t.�.4,�,4a�.4c�	�
+�
+�ۙ˛[��
+�JK܎�L�X�N�NX]\�]N�	̌�KL
+LL����\N��JN�[�\���\\�J
+NB���[��[ۈ�[[ݙP�ۙ
+JH�ۙ˜�X�JKJN�[�\���\\�J
+NB���[��[ۈ\]P�ۙ
+K�Y[�[
+H�ۙ��WVٚY[HH�Y[OOH	ۘ[YI��Y[OOH	�X]\�]I���[�\��Q��]
+�[
+H�[�\���\\�J
+NB���[��[ۈ�[�\���\\�J
+H�ۜ�]HH�]]J	�\��\�Q]I�N�ۜ��۝Z[�\�H��[Y[���][[Y[��RY
+	���\\�P�ۙ��N�۝Z[�\��[��\�SH	����ۜ�]HH�ۙ˛X\
 
-    console.log('MOEX sec:', JSON.stringify(sec));
-    console.log('MOEX md:', JSON.stringify(md));
+�JHO��ۜ�]HH�[�UJL��܋����\K���X�K]K��X]\�]JN�ۜ��\�HH���X�H��
+��܈����X�JH
+�L��ۜ��\�HH�[�\�][ۊL��܋����\K���X�K]K��X]\�]JN��۝Z[�\��[��\�S
+�H�]��\��H���\\�KX�\����]��\��H���\\�KX�\�ZXY\����[�]�\��H���\\�K[�[YH��[YOH�؋��[Y_H�ۘ�[��OH�\]P�ۙ
+	�_K	ۘ[YI�\˝�[YJH����]ۈ�\��H���\�[[ݙH�ۘ�X��H��[[ݙP�ۙ
+	�_JH���%O؝]ۏ���]���]��\��H���\\�KZ[�]ȏ��]��\��H���\\�KZ[�]��X�[�&�`�/�/�/H	O�X�[�[�]\OH��[X�\���[YOH�؋�ܟH��\H��H�ۘ�[��OH�\]P�ۙ
+	�_K	�܉�\˝�[YJH���]���]��\��H���\\�KZ[�]��X�[�)�-t/t,	O�X�[�[�]\OH��[X�\���[YOH�؋��X�_H��\H��H�ۘ�[��OH�\]P�ۙ
+	�_K	��X�I�\˝�[YJH���]���]��\��H���\\�KZ[�]��X�[�'�/�,�,4b4-t/t.4-O�X�[�[�]\OH�]H��[YOH�؋�X]\�]_H�ۘ�[��OH�\]P�ۙ
+	�_K	�X]\�]I�\˝�[YJH���]���]��\��H���\\�KZ[�]��X�[�&�`�/��,�/�-�X�[�[�]\OH��[X�\���[YOH�؋���\_H�Z[�H�H�X^H�L��ۘ�[��OH�\]P�ۙ
+	�_K	ٜ�\I�\˝�[YJH���]����]���]��\��H���\\�K\�\�[ȏ��]��\��H���\\�K\�\�Z][H��]��\��H���\\�K\�\�[X�[��(�-t.��4-4/�aK��]��]��\��H���\\�K\�\�]�[YH��ٛ]
+�\�K	�I�_O�]���]���]��\��H���\\�K\�\�Z][H��]��\��H���\\�K\�\�[X�[��UO�]��]��\��H���\\�K\�\�]�[YH��ٛ]
+]K	�I�_O�]���]���]��\��H���\\�K\�\�Z][H��]��\��H���\\�K\�\�[X�[��%4c�`4,4a�.4c��]��]��\��H���\\�K\�\�]�[YH��ٛ]
+\�	�4.��_O�]���]����]����]����]\����[YN����[YK�\�K]HNJN��ۜ��\��۝H��[Y[���][[Y[��RY
+	���\\�P�\��۝Z[�\��NY�
+�ۙ˛[���
+H�\��۝��[K�\�^HH	؛����Y�
+��\\�P�\�[��
+H��\\�P�\�[���\���J
+N��\\�P�\�[��H�]��\�
+��[Y[���][[Y[��RY
+	���\\�P�\�	�K\N�	ؘ\���]N�X�[Έ]K�X\
+O���[YJK�]\�]Έ�X�[�	�(�-t.�`�bt,4c�4-4/�aK��]N�]K�X\
+O���\�O˝њ^Y
+�JK�X��ܛ�[���܎�	ܙؘJL�L
+���JI��ܙ\��Y]\Έ
+K��X�[�	�UI�]N�]K�X\
+O��]O˝њ^Y
+�JK�X��ܛ�[���܎�	ܙؘJL�L
+��
+JI��ܙ\��Y]\Έ
+K�B�K��[ۜΈ�\�ۜ�]�N��YKXZ[�Z[�\�X��][Έ�[�K���[\Έ��X��Έ���܎�	�͘�̎	��۝���^�N�LHHKܚY����܎�	ܙؘJ�
+JI�HK�N��X��Έ���܎�	�͘�̎	��[�X�Έ�O��
+�	�I�KܚY����܎�	ܙؘJ�
+JI�HB�K�Y�[�Έ�Y�[���X�[Έ���܎�	�������۝���^�N�LHHHHB�B�JNH[�H�\��۝��[K�\�^HH	ۛۙI�B�B����OOOOOOOOOOOOOOOOOOOH4%4%t't%t%�'t*�%H4'�'�(�'�&�&OOOOOOOOOOOOOOOOOOOB�]�����\�[��H�[��[��[ۈ�[�\�����
+H�ۜ���HH�]�[
+	ۛ�Z[�[	�HL�ۜ�܈H�]�[
+	���\۔�]I�N�ۜ���\HH�]�[
+	���\ۑ��\I�H��ۜ�]HH�]]J	�\��\�Q]I�N�ۜ�Q]HH�]]J	�X]\�]Q]I�N��ۜ�����H�[��\�������K܋��\K]KQ]JN�ۜ�X�[�H���˛X\
+�O���]K����[Q]T��[��	ܝKT�I��[۝�	��ܝ	�YX\��	̋YY�]	�JJN�ۜ���\ۑ]HH���˛X\
+�O�����\ۊN�ۜ���Z[�[]HH���˛X\
+�O�����Z[�[
+N�Y�
+�����\�[��
+H�����\�[���\���J
+N�����\�[��H�]��\�
+��[Y[���][[Y[��RY
+	ٛ����\�	�K\N�	ؘ\���]N�X�[��]\�]Έ�X�[�	�&�`�/�/�/I�]N���\ۑ]K�X��ܛ�[���܎�	ܙؘJL�L
+���I��ܙ\��Y]\ΈK��X�[�	�'t/�/4.4/t,4.��]N���Z[�[]K�X��ܛ�[���܎�	ܙؘJM
+�
+�M��I��ܙ\��Y]\Έ
+K�B�K��[ۜΈ�\�ۜ�]�N��YKXZ[�Z[�\�X��][Έ�[�K���[\Έ���X��Y��YKX��Έ���܎�	�͘�̎	��۝���^�N�LHKܚY����܎�	ܙؘJ�
+JI�HK�N���X��Y��YKX��Έ���܎�	�͘�̎	��[�X�Έ�O��
+�	�8��I�KܚY����܎�	ܙؘJ�
+JI�HB�K�Y�[�Έ�Y�[���X�[Έ���܎�	�������۝���^�N�LHHHHB�B�JN��ۜ���HH��[Y[���][[Y[��RY
+	ٛ��Л�I�N��K�[��\�SH���˛X\
+�O��ۜ��[H����\ۈ
+�����Z[�[�ۜ�]T��H��]K����[Q]T��[��	ܝKT�I�N�]\�������]T��O����\��H�[[�[�X��\ۈ��ٛ]
+����\ۋ	�8��I�_O����\��H�ً���Z[�[��	�[[�[�[��Z[�[	��	��H��ً���Z[�[���]
+����Z[�[	�8��I�H�	��%	�O����\��H�[[�[�]�[��ٛ]
+�[	�8��I�_O������JK���[�	��NB����OOOOOOOOOOOOOOOOOOOHS�UOOOOOOOOOOOOOOOOOOOB���[Y[��]Y\�T�[X�ܐ[
+	˚[�]Y�Y[	�K��ܑXX�
+[O�[�Y]�[�\�[�\�	�[�]	��[��[ۊ
+H��4(t,t`4,4`tb�,�,4-t/S�Vt.�-tb4/�`4.4`4`�a�/t/�/4`4-t-4,4.�`�.4`4/�,�,4/t.4.��[��˗�[�^�^��\ۈH�[�[��˗�[�^��\۔\�[�H�[�X�[�
+NJN[�Y]�[�\�[�\�	��[��I��[��[ۊ
+H�[��˗�[�^�^��\ۈH�[�[��˗�[�^��\۔\�[�H�[�X�[�
+NJNJN�Y�
+�[��˕[Yܘ[H	���[��˕[Yܘ[K��X�\
+H�ۜ��H�[��˕[Yܘ[K��X�\˜�XYJ
+N˙^[�
 
-    // Заполняем форму
-    if (sec.FACEVALUE) document.getElementById('nominal').value = sec.FACEVALUE;
-    if (sec.COUPONPERCENT != null && sec.COUPONPERCENT !== '') {
-      document.getElementById('couponRate').value = sec.COUPONPERCENT;
-    }
-
-    if (sec.COUPONPERIOD && sec.COUPONPERIOD > 0) {
-      var freq = Math.round(365 / sec.COUPONPERIOD);
-      document.getElementById('couponFreq').value = freq > 0 ? freq : 2;
-    }
-
-    // Цена: берём LAST > PREVLEGALCLOSEPRICE > PREVPRICE (всё в % от номинала)
-    var price = null;
-    if (md.LAST && md.LAST > 0) price = md.LAST;
-    else if (md.PREVLEGALCLOSEPRICE && md.PREVLEGALCLOSEPRICE > 0) price = md.PREVLEGALCLOSEPRICE;
-    else if (sec.PREVPRICE && sec.PREVPRICE > 0) price = sec.PREVPRICE;
-    else if (sec.PREVWAPRICE && sec.PREVWAPRICE > 0) price = sec.PREVWAPRICE;
-    if (price) document.getElementById('currentPrice').value = price;
-
-    if (sec.MATDATE) document.getElementById('maturityDate').value = sec.MATDATE;
-    if (sec.OFFERDATE) document.getElementById('offerDate').value = sec.OFFERDATE;
-
-    document.getElementById('purchaseDate').value = new Date().toISOString().split('T')[0];
-
-    // Дата последнего купона из NEXTCOUPON - COUPONPERIOD
-    if (sec.NEXTCOUPON && sec.COUPONPERIOD) {
-      var next = new Date(sec.NEXTCOUPON);
-      var last = new Date(next);
-      last.setDate(last.getDate() - sec.COUPONPERIOD);
-      document.getElementById('lastCouponDate').value = last.toISOString().split('T')[0];
-      // Сохраняем NEXTCOUPON для более точного расчёта
-      window._moexNextCoupon = sec.NEXTCOUPON;
-      window._moexCouponPeriod = sec.COUPONPERIOD;
-    }
-
-    recalc();
-
-    var bondName = sec.SHORTNAME || sec.SECNAME || secid;
-    results.innerHTML = '<div class="moex-item" style="border-color:var(--green);background:var(--green-bg);cursor:default">' +
-      '<span class="moex-item-name">' + bondName + '</span> ' +
-      '<span class="moex-item-ticker">' + secid + '</span>' +
-      '<div class="moex-item-details">' +
-        'Номинал: ' + (sec.FACEVALUE || '—') + ' ₽ · Купон: ' + (sec.COUPONPERCENT || '—') + '% · Цена: ' + (price || '—') + '% · Погашение: ' + (sec.MATDATE || '—') +
-        (sec.OFFERDATE ? ' · Оферта: ' + sec.OFFERDATE : '') +
-        (md.YIELD ? ' · YTM MOEX: ' + Number(md.YIELD).toFixed(2) + '%' : '') +
-      '</div>' +
-    '</div>';
-
-    status.textContent = 'Данные загружены с MOEX (' + (sec.BOARDID || '') + ')';
-    status.className = 'moex-status success';
-
-  } catch (err) {
-    status.textContent = 'Не удалось загрузить ' + secid + '. Введите данные вручную.';
-    status.className = 'moex-status error';
-    console.error('MOEX load error:', err);
-  }
-}
-
-function showHint(key, evt) {
-  if (evt) { evt.preventDefault(); evt.stopPropagation(); }
-  const text = HINTS[key];
-  if (!text) return;
-  document.getElementById('hintText').innerHTML = text;
-  document.getElementById('hintPopup').classList.add('show');
-}
-function closeHint(evt) {
-  if (evt) { evt.preventDefault(); evt.stopPropagation(); }
-  document.getElementById('hintPopup').classList.remove('show');
-}
-
-// Назначаем обработчики на все кнопки-подсказки через JS (надёжнее inline onclick)
-document.addEventListener('DOMContentLoaded', function() {
-  // Кнопки подсказок
-  document.querySelectorAll('.hint-btn').forEach(function(btn) {
-    var key = btn.getAttribute('data-hint');
-    if (key) {
-      btn.addEventListener('click', function(e) { showHint(key, e); });
-      btn.addEventListener('touchend', function(e) { showHint(key, e); });
-    }
-  });
-  // Закрытие popup
-  document.getElementById('hintPopup').addEventListener('click', function(e) { closeHint(e); });
-  document.getElementById('hintContentBox').addEventListener('click', function(e) { e.stopPropagation(); });
-  document.getElementById('hintCloseBtn').addEventListener('click', function(e) { closeHint(e); });
-
-  // MOEX поиск
-  document.getElementById('moexSearchBtn').addEventListener('click', function() {
-    searchMoex(document.getElementById('moexSearch').value);
-  });
-  document.getElementById('moexSearch').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') { e.preventDefault(); searchMoex(this.value); }
-  });
-});
-
-// ==================== TABS ====================
-function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', ['calc','compare','flows'][i] === tab));
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
-  if (tab === 'compare') renderCompare();
-  if (tab === 'flows') renderFlows();
-}
-
-// ==================== РАСЧЁТЫ ====================
-function getVal(id) { return parseFloat(document.getElementById(id).value) || 0; }
-function getDate(id) { return document.getElementById(id).value; }
-
-function daysBetween(d1, d2) {
-  return Math.round((new Date(d2) - new Date(d1)) / 86400000);
-}
-function yearFrac(d1, d2) { return daysBetween(d1, d2) / 365; }
-
-function calcCashflows(nom, cr, freq, pDate, eDate) {
-  const cpp = (nom * cr / 100) / freq;
-  const pDays = Math.round(365 / freq);
-  const flows = [];
-  const purchase = new Date(pDate);
-  const end = new Date(eDate);
-
-  // Если есть данные о следующем купоне от MOEX — строим от него
-  var startDate;
-  if (window._moexNextCoupon && window._moexCouponPeriod) {
-    startDate = new Date(window._moexNextCoupon);
-    // Откатываемся назад, чтобы найти первый купон после покупки
-    while (startDate > purchase) {
-      var prev = new Date(startDate);
-      prev.setDate(prev.getDate() - window._moexCouponPeriod);
-      if (prev <= purchase) break;
-      startDate = prev;
-    }
-    // Если startDate оказался ДО покупки — вперёд на 1 период
-    if (startDate <= purchase) {
-      startDate.setDate(startDate.getDate() + window._moexCouponPeriod);
-    }
-  } else {
-    // Фоллбэк: от даты покупки + период
-    startDate = new Date(purchase);
-    startDate.setDate(startDate.getDate() + pDays);
-  }
-
-  let d = new Date(startDate);
-  while (d <= end) {
-    flows.push({ date: new Date(d), coupon: cpp, nominal: 0 });
-    d = new Date(d);
-    d.setDate(d.getDate() + (window._moexCouponPeriod || pDays));
-  }
-  if (flows.length > 0) flows[flows.length - 1].nominal = nom;
-  else flows.push({ date: end, coupon: cpp, nominal: nom });
-  return flows;
-}
-
-function calcNKD(nom, cr, freq, pDate, lcDate) {
-  const cpp = (nom * cr / 100) / freq;
-  const daysInPeriod = 365 / freq;
-  let daysSince = lcDate ? daysBetween(lcDate, pDate) : 0;
-  if (daysSince < 0) daysSince = 0;
-  if (daysSince > daysInPeriod) daysSince = daysSince % daysInPeriod;
-  return cpp * (daysSince / daysInPeriod);
-}
-
-function calcYTM(nom, cr, freq, pricePct, pDate, eDate) {
-  // Грязная цена = чистая + НКД (как на MOEX)
-  const cleanAbs = nom * pricePct / 100;
-  const lcDate = getDate('lastCouponDate');
-  const nkd = calcNKD(nom, cr, freq, pDate, lcDate);
-  const dirtyAbs = cleanAbs + nkd;
-
-  const flows = calcCashflows(nom, cr, freq, pDate, eDate);
-  let ytm = (cr / 100) || 0.05;
-  for (let i = 0; i < 300; i++) {
-    let pv = 0, dpv = 0;
-    for (const f of flows) {
-      const t = yearFrac(pDate, f.date);
-      if (t <= 0) continue;
-      const total = f.coupon + f.nominal;
-      const disc = Math.pow(1 + ytm, t);
-      pv += total / disc;
-      dpv -= t * total / (disc * (1 + ytm));
-    }
-    const diff = pv - dirtyAbs;
-    if (Math.abs(diff) < 0.001) break;
-    if (Math.abs(dpv) < 1e-10) break;
-    ytm -= diff / dpv;
-    if (ytm < -0.5) ytm = -0.5;
-    if (ytm > 5) ytm = 5;
-  }
-  return ytm * 100;
-}
-
-function calcDuration(nom, cr, freq, pricePct, pDate, eDate) {
-  const flows = calcCashflows(nom, cr, freq, pDate, eDate);
-  const ytm = calcYTM(nom, cr, freq, pricePct, pDate, eDate) / 100;
-  let sumW = 0, sumPV = 0;
-  for (const f of flows) {
-    const t = yearFrac(pDate, f.date);
-    if (t <= 0) continue;
-    const total = f.coupon + f.nominal;
-    const pv = total / Math.pow(1 + ytm, t);
-    sumW += t * pv; sumPV += pv;
-  }
-  const dur = sumPV > 0 ? sumW / sumPV : 0;
-  return { dur, modDur: dur / (1 + ytm / freq) };
-}
-
-function fmt(v, suf) {
-  if (v === null || v === undefined || isNaN(v)) return '—';
-  return Number(v).toFixed(2) + (suf || '');
-}
-
-function recalc() {
-  const nom = getVal('nominal') || 1000;
-  const cr = getVal('couponRate');
-  const freq = getVal('couponFreq') || 2;
-  const price = getVal('currentPrice') || 100;
-  const pDate = getDate('purchaseDate');
-  const mDate = getDate('maturityDate');
-  const oDate = getDate('offerDate');
-  const lcDate = getDate('lastCouponDate');
-  const tax = getVal('taxRate') || 13;
-
-  const curYield = price > 0 ? (cr / price) * 100 : 0;
-  document.getElementById('res-curYield').textContent = fmt(curYield, '%');
-
-  const ytm = calcYTM(nom, cr, freq, price, pDate, mDate);
-  document.getElementById('res-ytm').textContent = fmt(ytm, '%');
-
-  const effYield = (Math.pow(1 + (ytm/100) / freq, freq) - 1) * 100;
-  document.getElementById('res-effYield').textContent = fmt(effYield, '%');
-
-  if (oDate) {
-    const yto = calcYTM(nom, cr, freq, price, pDate, oDate);
-    document.getElementById('res-yto').textContent = fmt(yto, '%');
-    document.getElementById('res-yto-sub').textContent = '';
-  } else {
-    document.getElementById('res-yto').textContent = '—';
-    document.getElementById('res-yto-sub').textContent = 'Укажите дату оферты';
-  }
-
-  const nkd = calcNKD(nom, cr, freq, pDate, lcDate);
-  const cleanPrice = nom * price / 100;
-  const dirtyPrice = cleanPrice + nkd;
-
-  document.getElementById('res-cleanPrice').textContent = fmt(cleanPrice, ' ₽');
-  document.getElementById('res-nkd').textContent = fmt(nkd, ' ₽');
-  document.getElementById('res-dirtyPrice').textContent = fmt(dirtyPrice, ' ₽');
-
-  const { dur, modDur } = calcDuration(nom, cr, freq, price, pDate, mDate);
-  document.getElementById('res-duration').textContent = fmt(dur);
-  document.getElementById('res-modDuration').textContent = fmt(modDur);
-
-  const years = yearFrac(pDate, mDate);
-  const totalCoupons = (nom * cr / 100) * years;
-  const taxCoupons = totalCoupons * tax / 100;
-  const priceDiff = nom - cleanPrice;
-  const taxPriceDiff = priceDiff > 0 ? priceDiff * tax / 100 : 0;
-  const ytmAfterTax = calcYTM(nom, cr * (1 - tax/100), freq, price, pDate, mDate);
-
-  document.getElementById('res-taxCoupons').textContent = fmt(taxCoupons, ' ₽');
-  document.getElementById('res-taxPrice').textContent = fmt(taxPriceDiff, ' ₽');
-  document.getElementById('res-ytmAfterTax').textContent = fmt(ytmAfterTax, '%');
-}
-
-// ==================== СРАВНЕНИЕ ====================
-let bonds = [
-  { name: 'ОФЗ 26238', cr: 7.1, price: 55, maturity: '2041-05-15', freq: 2 },
-  { name: 'ОФЗ 26243', cr: 12.0, price: 95, maturity: '2038-05-19', freq: 2 },
-];
-let compareChartInst = null;
-
-function addBond() {
-  bonds.push({ name: 'Облигация ' + (bonds.length + 1), cr: 10, price: 98, maturity: '2029-04-12', freq: 2 });
-  renderCompare();
-}
-
-function removeBond(i) {
-  bonds.splice(i, 1);
-  renderCompare();
-}
-
-function updateBond(i, field, val) {
-  bonds[i][field] = field === 'name' || field === 'maturity' ? val : parseFloat(val) || 0;
-  renderCompare();
-}
-
-function renderCompare() {
-  const pDate = getDate('purchaseDate');
-  const container = document.getElementById('compareBonds');
-  container.innerHTML = '';
-
-  const data = bonds.map((b, i) => {
-    const ytm = calcYTM(1000, b.cr, b.freq, b.price, pDate, b.maturity);
-    const curY = b.price > 0 ? (b.cr / b.price) * 100 : 0;
-    const { dur } = calcDuration(1000, b.cr, b.freq, b.price, pDate, b.maturity);
-
-    container.innerHTML += `
-      <div class="compare-card">
-        <div class="compare-card-header">
-          <input class="compare-name" value="${b.name}" onchange="updateBond(${i},'name',this.value)">
-          <button class="btn-remove" onclick="removeBond(${i})">✕</button>
-        </div>
-        <div class="compare-inputs">
-          <div class="compare-input"><label>Купон %</label><input type="number" value="${b.cr}" step="0.1" onchange="updateBond(${i},'cr',this.value)"></div>
-          <div class="compare-input"><label>Цена %</label><input type="number" value="${b.price}" step="0.1" onchange="updateBond(${i},'price',this.value)"></div>
-          <div class="compare-input"><label>Погашение</label><input type="date" value="${b.maturity}" onchange="updateBond(${i},'maturity',this.value)"></div>
-          <div class="compare-input"><label>Куп/год</label><input type="number" value="${b.freq}" min="1" max="12" onchange="updateBond(${i},'freq',this.value)"></div>
-        </div>
-        <div class="compare-results">
-          <div class="compare-res-item"><div class="compare-res-label">Тек. дох.</div><div class="compare-res-value">${fmt(curY,'%')}</div></div>
-          <div class="compare-res-item"><div class="compare-res-label">YTM</div><div class="compare-res-value">${fmt(ytm,'%')}</div></div>
-          <div class="compare-res-item"><div class="compare-res-label">Дюрация</div><div class="compare-res-value">${fmt(dur,' л')}</div></div>
-        </div>
-      </div>`;
-
-    return { name: b.name, curY, ytm };
-  });
-
-  const chartCont = document.getElementById('compareChartContainer');
-  if (bonds.length > 0) {
-    chartCont.style.display = 'block';
-    if (compareChartInst) compareChartInst.destroy();
-    compareChartInst = new Chart(document.getElementById('compareChart'), {
-      type: 'bar',
-      data: {
-        labels: data.map(d => d.name),
-        datasets: [
-          { label: 'Текущая дох.', data: data.map(d => d.curY?.toFixed(2)), backgroundColor: 'rgba(12,107,88,0.35)', borderRadius: 4 },
-          { label: 'YTM', data: data.map(d => d.ytm?.toFixed(2)), backgroundColor: 'rgba(12,107,88,0.85)', borderRadius: 4 },
-        ]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        scales: {
-          x: { ticks: { color: '#6b7280', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
-          y: { ticks: { color: '#6b7280', callback: v => v + '%' }, grid: { color: 'rgba(0,0,0,0.05)' } }
-        },
-        plugins: { legend: { labels: { color: '#333', font: { size: 11 } } } }
-      }
-    });
-  } else {
-    chartCont.style.display = 'none';
-  }
-}
-
-// ==================== ДЕНЕЖНЫЕ ПОТОКИ ====================
-let flowsChartInst = null;
-
-function renderFlows() {
-  const nom = getVal('nominal') || 1000;
-  const cr = getVal('couponRate');
-  const freq = getVal('couponFreq') || 2;
-  const pDate = getDate('purchaseDate');
-  const mDate = getDate('maturityDate');
-
-  const flows = calcCashflows(nom, cr, freq, pDate, mDate);
-  const labels = flows.map(f => f.date.toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' }));
-  const couponData = flows.map(f => f.coupon);
-  const nominalData = flows.map(f => f.nominal);
-
-  if (flowsChartInst) flowsChartInst.destroy();
-  flowsChartInst = new Chart(document.getElementById('flowsChart'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Купон', data: couponData, backgroundColor: 'rgba(12,107,88,0.7)', borderRadius: 0 },
-        { label: 'Номинал', data: nominalData, backgroundColor: 'rgba(146,64,14,0.6)', borderRadius: 4 },
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      scales: {
-        x: { stacked: true, ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
-        y: { stacked: true, ticks: { color: '#6b7280', callback: v => v + ' ₽' }, grid: { color: 'rgba(0,0,0,0.05)' } }
-      },
-      plugins: { legend: { labels: { color: '#333', font: { size: 11 } } } }
-    }
-  });
-
-  const tbody = document.getElementById('flowsBody');
-  tbody.innerHTML = flows.map(f => {
-    const total = f.coupon + f.nominal;
-    const dateStr = f.date.toLocaleDateString('ru-RU');
-    return `<tr>
-      <td>${dateStr}</td>
-      <td class="amount-coupon">${fmt(f.coupon, ' ₽')}</td>
-      <td class="${f.nominal > 0 ? 'amount-nominal' : ''}">${f.nominal > 0 ? fmt(f.nominal, ' ₽') : '—'}</td>
-      <td class="amount-total">${fmt(total, ' ₽')}</td>
-    </tr>`;
-  }).join('');
-}
-
-// ==================== INIT ====================
-document.querySelectorAll('.input-field').forEach(el => {
-  el.addEventListener('input', function() {
-    // Сбрасываем MOEX-кеш при ручном редактировании
-    window._moexNextCoupon = null;
-    window._moexCouponPeriod = null;
-    recalc();
-  });
-  el.addEventListener('change', function() {
-    window._moexNextCoupon = null;
-    window._moexCouponPeriod = null;
-    recalc();
-  });
-});
-
-if (window.Telegram && window.Telegram.WebApp) {
-  const tg = window.Telegram.WebApp;
-  tg.ready();
-  tg.expand();
-}
-
-recalc();
-</script>
-</body>
-</html>
+NB���X�[�
+N��ܚ\��؛�O���[�
