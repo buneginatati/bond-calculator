@@ -288,9 +288,68 @@
     .price-grid { grid-template-columns: 1fr; gap: 14px; }
     .result-value { font-size: 20px; }
   }
+
+
+  /* ACCESS GATE */
+  .access-gate {
+    position: fixed; inset: 0;
+    background: linear-gradient(135deg, #f3f8f5 0%, #ffffff 100%);
+    z-index: 99999;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .access-gate-card {
+    background: white;
+    border-radius: 16px;
+    padding: 36px 28px;
+    max-width: 380px; width: 100%;
+    box-shadow: 0 10px 40px rgba(12,107,88,0.15);
+    text-align: center;
+  }
+  .access-gate-card h2 {
+    margin: 0 0 10px;
+    color: var(--green);
+    font-size: 22px;
+  }
+  .access-gate-card p {
+    color: #666; margin: 0 0 22px; font-size: 14px; line-height: 1.45;
+  }
+  .access-gate-card input {
+    width: 100%; padding: 14px 16px;
+    border: 2px solid #e5e5e5; border-radius: 10px;
+    font-size: 16px; margin-bottom: 12px;
+    box-sizing: border-box;
+    font-family: inherit;
+  }
+  .access-gate-card input:focus {
+    border-color: var(--green); outline: none;
+  }
+  .access-gate-card button {
+    width: 100%; padding: 14px;
+    background: var(--green); color: white;
+    border: none; border-radius: 10px;
+    font-size: 16px; font-weight: 600; cursor: pointer;
+    font-family: inherit;
+  }
+  .access-gate-card button:hover { opacity: 0.9; }
+  .access-gate-error {
+    color: #c33; font-size: 13px; margin-top: 8px; min-height: 16px;
+  }
+  .access-gate-footer {
+    margin-top: 18px; font-size: 12px; color: #999;
+  }
+  .access-gate-hidden { display: none !important; }
 </style>
 </head>
 <body>
+
+<!-- ACCESS GATE (только для ?access=academy) -->
+<div class="access-gate access-gate-hidden" id="accessGate">
+  <div class="access-gate-card" id="accessGateCard">
+    <h2>Загрузка…</h2>
+    <p>Проверяем доступ.</p>
+  </div>
+</div>
 
 <!-- HINT POPUP -->
 <div class="hint-popup" id="hintPopup">
@@ -519,6 +578,103 @@
 </div>
 
 <script>
+// ==================== ACCESS GATE (Telegram + Supabase) ====================
+// Режим с проверкой включается URL-параметром ?access=academy
+// Работает только внутри Telegram Mini App. Вне Telegram — показывает ссылку на бот.
+const SUPABASE_URL = 'https://hlpfobpuwvoiuxdvhczb.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_O79mqg9_orMs5h_Nsw9d1Q_vhC_yVio';
+const CHECK_ACCESS_FN = SUPABASE_URL + '/functions/v1/check-access';
+
+(function setupAccessGate(){
+  var params = new URLSearchParams(location.search);
+  if (params.get('access') !== 'academy') return; // публичный режим
+
+  document.addEventListener('DOMContentLoaded', function(){
+    var gate = document.getElementById('accessGate');
+    var card = document.getElementById('accessGateCard');
+    if (!gate || !card) return;
+    gate.classList.remove('access-gate-hidden');
+
+    var tg = window.Telegram && window.Telegram.WebApp;
+    if (!tg || !tg.initData) {
+      card.innerHTML = '<h2>🔒 Доступ только через бот</h2>' +
+        '<p>Этот калькулятор доступен ученикам академии «Инвестиции просто». Откройте бот и зайдите через кнопку «Калькулятор».</p>' +
+        '<button onclick="window.open(\'https://t.me/invest_prosto_obligi_bot\', \'_blank\')">Открыть бот</button>';
+      return;
+    }
+
+    tg.ready();
+    tg.expand();
+    checkAccess(tg.initData, null);
+
+    async function checkAccess(initData, email) {
+      renderLoading();
+      try {
+        var res = await fetch(CHECK_ACCESS_FN, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+          body: JSON.stringify({ init_data: initData, email: email })
+        });
+        var data = await res.json();
+        handleResponse(data, initData);
+      } catch (e) {
+        renderError('Не удалось связаться с сервером. Попробуйте ещё раз.');
+      }
+    }
+
+    function handleResponse(data, initData) {
+      if (data.ok && data.status === 'active') {
+        gate.classList.add('access-gate-hidden');
+        return;
+      }
+      if (data.status === 'need_email') { renderEmailForm(initData); return; }
+      if (data.status === 'email_not_found') {
+        renderError('Мы не нашли подписку по этому email. Проверьте, что ввели тот же email, на который куплен курс. Или напишите куратору.');
+        return;
+      }
+      if (data.status === 'email_already_bound') {
+        renderError('Этот email уже привязан к другому Telegram-аккаунту. Если это ошибка — напишите куратору.');
+        return;
+      }
+      if (data.status === 'expired') { renderExpired(data.expires_at); return; }
+      renderError(data.error || 'Неизвестная ошибка. Обратитесь к куратору.');
+    }
+
+    function renderLoading() {
+      card.innerHTML = '<h2>Проверяем доступ…</h2><p>Секундочку.</p>';
+    }
+
+    function renderEmailForm(initData) {
+      card.innerHTML =
+        '<h2>Здравствуйте, ученик!</h2>' +
+        '<p>Введите email, на который куплен курс в Академии «Инвестиции просто». Мы свяжем его с вашим Telegram — это нужно сделать только один раз.</p>' +
+        '<input type="email" id="emailInput" placeholder="email@example.com" autocomplete="email">' +
+        '<button id="emailSubmit">Подтвердить</button>' +
+        '<div class="access-gate-error" id="accessError"></div>';
+      var input = document.getElementById('emailInput');
+      var btn = document.getElementById('emailSubmit');
+      btn.addEventListener('click', function(){ checkAccess(initData, input.value.trim()); });
+      input.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); btn.click(); } });
+      setTimeout(function(){ input.focus(); }, 100);
+    }
+
+    function renderExpired(expiresAt) {
+      var d = expiresAt ? new Date(expiresAt).toLocaleDateString('ru-RU') : '';
+      card.innerHTML =
+        '<h2>⏰ Подписка закончилась</h2>' +
+        '<p>Ваш доступ к калькулятору истёк' + (d ? ' ' + d : '') + '. Чтобы продолжить пользоваться — продлите доступ в академии.</p>' +
+        '<button onclick="window.open(\'https://t.me/invest_prosto_obligi_bot\', \'_blank\')">Написать в бот</button>';
+    }
+
+    function renderError(msg) {
+      card.innerHTML =
+        '<h2>🔒 Доступ закрыт</h2>' +
+        '<p>' + msg + '</p>' +
+        '<button onclick="location.reload()">Попробовать ещё раз</button>';
+    }
+  });
+})();
+
 // ==================== ПОДСКАЗКИ ====================
 const HINTS = {
   nominal: "<b>Номинал</b> — сумма, которую вам вернут при погашении облигации. Обычно 1000 ₽ для российских облигаций.",
