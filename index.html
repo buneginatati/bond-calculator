@@ -363,7 +363,7 @@
 <div class="header">
   <div class="header-logo"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
   <rect width="44" height="44" rx="12" fill="#3B3FBF"/>
-  <text x="22" y="30" text-anchor="middle" fill="#ffffff" font-family="Inter,sans-serif" font-size="24" font-weight="800">P</text>
+  <path d="M8 22c0-4.4 3.1-8 7-8s7 3.6 7 8-3.1 8-7 8-7-3.6-7-8zm14 0c0-4.4 3.1-8 7-8s7 3.6 7 8-3.1 8-7 8-7-3.6-7-8z" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
 </svg></div>
   <div>
     <h1>Калькулятор облигаций</h1>
@@ -553,6 +553,7 @@
   <!-- ===== ДЕНЕЖНЫЕ ПОТОКИ ===== -->
   <div class="tab-content" id="tab-flows">
     <div class="section-title">Денежные потоки</div>
+    <div id="flowsBondName" style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:6px"></div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">
       Все выплаты по облигации — купоны и возврат номинала при погашении
     </p>
@@ -892,6 +893,8 @@ async function loadBondFromMoex(secid) {
     recalc();
 
     var bondName = escHtml(sec.SHORTNAME || sec.SECNAME || secid);
+    window._loadedBondName = sec.SHORTNAME || sec.SECNAME || secid;
+    window._loadedBondTicker = secid;
     results.innerHTML = '<div class="moex-item" style="border-color:var(--green);background:var(--green-bg);cursor:default">' +
       '<span class="moex-item-name">' + bondName + '</span> ' +
       '<span class="moex-item-ticker">' + escHtml(secid) + '</span>' +
@@ -1385,6 +1388,14 @@ function renderFlows() {
   const freq = getVal('couponFreq') || 2;
   const pDate = getDate('purchaseDate');
   const mDate = getDate('maturityDate');
+
+  // Показываем название облигации
+  const nameEl = document.getElementById('flowsBondName');
+  if (nameEl) {
+    const bName = window._loadedBondName || '';
+    const bTicker = window._loadedBondTicker || '';
+    nameEl.textContent = bName ? (bName + (bTicker ? ' · ' + bTicker : '')) : '';
+  }
 
   const flows = calcCashflows(nom, cr, freq, pDate, mDate);
   const labels = flows.map(f => f.date.toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' }));
