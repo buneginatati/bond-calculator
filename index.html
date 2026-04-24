@@ -1123,15 +1123,14 @@ function recalc() {
 }
 
 // ==================== СРАВНЕНИЕ ====================
-let bonds = [
-  { name: 'ОФЗ 26238', cr: 7.1, price: 55, maturity: '2041-05-15', freq: 2 },
-  { name: 'ОФЗ 26243', cr: 12.0, price: 95, maturity: '2038-05-19', freq: 2 },
-];
+let bonds = [];
 let compareChartInst = null;
 
 function addBond() {
-  bonds.push({ name: 'Облигация ' + (bonds.length + 1), cr: 10, price: 98, maturity: '2029-04-12', freq: 2 });
+  bonds.push({ name: '', cr: 0, price: 0, maturity: '', freq: 2, nominal: 1000, searchQuery: '' });
   renderCompare();
+  // Фокус на поиск в новой карточке
+  setTimeout(function(){ var el = document.getElementById('cmpSearch' + (bonds.length - 1)); if (el) el.focus(); }, 100);
 }
 
 function removeBond(i) {
@@ -1141,59 +1140,206 @@ function removeBond(i) {
 
 function updateBond(i, field, val) {
   bonds[i][field] = field === 'name' || field === 'maturity' ? val : parseFloat(val) || 0;
-  renderCompare();
+  renderCompareResults();
+}
+
+async function searchMoexForCompare(idx) {
+  var input = document.getElementById('cmpSearch' + idx);
+  var results = document.getElementById('cmpResults' + idx);
+  var status = document.getElementById('cmpStatus' + idx);
+  var query = input.value.trim();
+
+  if (query.length < 2) {
+    status.textContent = 'Введите минимум 2 символа';
+    status.className = 'moex-status error';
+    return;
+  }
+
+  status.textContent = 'Ищу...';
+  status.className = 'moex-status';
+  results.innerHTML = '';
+  results.style.display = 'block';
+
+  try {
+    var url = MOEX_BASE + '/securities.json?q=' + encodeURIComponent(query) + '&limit=100&iss.meta=off&group_by_filter=stock_bonds';
+    var data = await moexFetch(url);
+    var cols = data.securities.columns;
+    var rows = data.securities.data;
+
+    if (!rows || rows.length === 0) {
+      status.textContent = 'Ничего не найдено';
+      status.className = 'moex-status error';
+      return;
+    }
+
+    var allBonds = rows.map(function(r) {
+      var d = {}; cols.forEach(function(c, i) { d[c] = r[i]; }); return d;
+    });
+    var filtered = allBonds.filter(function(d) {
+      return d.group === 'stock_bonds' || (d.type && d.type.indexOf('bond') >= 0) || (d.group && d.group.indexOf('bond') >= 0);
+    });
+    var toShow = filtered.length > 0 ? filtered : allBonds;
+    var maxShow = Math.min(toShow.length, 10);
+
+    results.innerHTML = toShow.slice(0, maxShow).map(function(b) {
+      var secid = escHtml(b.secid || '');
+      var shortname = escHtml(b.shortname || b.name || 'Без названия');
+      var isin = b.isin ? ' · ' + escHtml(b.isin) : '';
+      return '<div class="moex-item" onclick="loadBondForCompare(' + idx + ',\'' + secid + '\')">' +
+        '<span class="moex-item-name">' + shortname + '</span>' +
+        '<span class="moex-item-ticker">' + secid + '</span>' +
+        '<div class="moex-item-details">' + escHtml(b.name || '') + isin + '</div>' +
+      '</div>';
+    }).join('');
+
+    status.textContent = 'Найдено: ' + toShow.length + (toShow.length > maxShow ? ' (показаны первые ' + maxShow + ')' : '');
+    status.className = 'moex-status success';
+  } catch (err) {
+    status.textContent = 'Ошибка загрузки. Проверьте интернет.';
+    status.className = 'moex-status error';
+  }
+}
+
+async function loadBondForCompare(idx, secid) {
+  var status = document.getElementById('cmpStatus' + idx);
+  var results = document.getElementById('cmpResults' + idx);
+  status.textContent = 'Загружаю ' + secid + '...';
+  status.className = 'moex-status';
+
+  try {
+    var url = MOEX_BASE + '/engines/stock/markets/bonds/securities/' + secid + '.json?iss.meta=off';
+    var data = await moexFetch(url);
+    var secCols = data.securities.columns;
+    var secRows = data.securities.data;
+    if (!secRows || secRows.length === 0) throw new Error('Нет данных');
+
+    var prefBoards = ['TQOB','TQCB','TQIR','EQOB','PSOB','TQOD'];
+    var sec = pickBestRow(secCols, secRows, prefBoards);
+    var mdCols = data.marketdata.columns;
+    var mdRows = data.marketdata.data;
+    var md = pickBestRow(mdCols, mdRows, prefBoards) || {};
+
+    var price = null;
+    if (md.LAST && md.LAST > 0) price = md.LAST;
+    else if (md.PREVLEGALCLOSEPRICE && md.PREVLEGALCLOSEPRICE > 0) price = md.PREVLEGALCLOSEPRICE;
+    else if (sec.PREVPRICE && sec.PREVPRICE > 0) price = sec.PREVPRICE;
+    else if (sec.PREVWAPRICE && sec.PREVWAPRICE > 0) price = sec.PREVWAPRICE;
+
+    var freq = 2;
+    if (sec.COUPONPERIOD && sec.COUPONPERIOD > 0) {
+      freq = Math.round(365 / sec.COUPONPERIOD);
+      if (freq < 1) freq = 1;
+    }
+
+    bonds[idx] = {
+      name: sec.SHORTNAME || sec.SECNAME || secid,
+      cr: sec.COUPONPERCENT || 0,
+      price: price || 0,
+      maturity: sec.MATDATE || '',
+      freq: freq,
+      nominal: sec.FACEVALUE || 1000,
+      searchQuery: bonds[idx].searchQuery
+    };
+
+    results.innerHTML = '<div class="moex-item" style="border-color:var(--green);background:var(--green-bg);cursor:default">' +
+      '<span class="moex-item-name">' + escHtml(bonds[idx].name) + '</span> ' +
+      '<span class="moex-item-ticker">' + escHtml(secid) + '</span>' +
+      '<div class="moex-item-details">' +
+        'Купон: ' + (sec.COUPONPERCENT || '—') + '% · Цена: ' + (price || '—') + '% · Погашение: ' + escHtml(sec.MATDATE || '—') +
+        (md.YIELD ? ' · YTM MOEX: ' + Number(md.YIELD).toFixed(2) + '%' : '') +
+      '</div></div>';
+
+    status.textContent = 'Загружено ✓';
+    status.className = 'moex-status success';
+
+    renderCompareResults();
+  } catch (err) {
+    status.textContent = 'Не удалось загрузить ' + secid;
+    status.className = 'moex-status error';
+  }
 }
 
 function renderCompare() {
-  const pDate = getDate('purchaseDate');
-  const container = document.getElementById('compareBonds');
+  var container = document.getElementById('compareBonds');
   container.innerHTML = '';
 
-  const data = bonds.map((b, i) => {
-    const ytm = calcYTM(1000, b.cr, b.freq, b.price, pDate, b.maturity);
-    const curY = b.price > 0 ? (b.cr / b.price) * 100 : 0;
-    const { dur } = calcDuration(1000, b.cr, b.freq, b.price, pDate, b.maturity);
+  bonds.forEach(function(b, i) {
+    var cardHtml =
+      '<div class="compare-card">' +
+        '<div class="compare-card-header">' +
+          '<div style="font-weight:700;font-size:15px;color:var(--black)">' + (b.name ? escHtml(b.name) : 'Новая облигация') + '</div>' +
+          '<button class="btn-remove" onclick="removeBond(' + i + ')">✕</button>' +
+        '</div>' +
+        '<div class="moex-search-wrap" style="margin-bottom:8px">' +
+          '<input class="input-field moex-input" type="text" id="cmpSearch' + i + '" placeholder="Поиск по названию или тикеру" value="' + escHtml(b.searchQuery || '') + '" autocomplete="off">' +
+          '<button class="moex-search-btn" onclick="searchMoexForCompare(' + i + ')">Найти</button>' +
+        '</div>' +
+        '<div class="moex-status" id="cmpStatus' + i + '"></div>' +
+        '<div class="moex-results" id="cmpResults' + i + '" style="max-height:200px"></div>' +
+        (b.name ? (
+          '<div class="compare-inputs" style="margin-top:8px">' +
+            '<div class="compare-input"><label>Купон %</label><input type="number" value="' + b.cr + '" step="0.1" onchange="updateBond(' + i + ',\'cr\',this.value)"></div>' +
+            '<div class="compare-input"><label>Цена %</label><input type="number" value="' + b.price + '" step="0.1" onchange="updateBond(' + i + ',\'price\',this.value)"></div>' +
+            '<div class="compare-input"><label>Погашение</label><input type="date" value="' + b.maturity + '" onchange="updateBond(' + i + ',\'maturity\',this.value)"></div>' +
+            '<div class="compare-input"><label>Куп/год</label><input type="number" value="' + b.freq + '" min="1" max="12" onchange="updateBond(' + i + ',\'freq\',this.value)"></div>' +
+          '</div>' +
+          '<div class="compare-results" id="cmpRes' + i + '"></div>'
+        ) : '') +
+      '</div>';
+    container.insertAdjacentHTML('beforeend', cardHtml);
 
-    container.innerHTML += `
-      <div class="compare-card">
-        <div class="compare-card-header">
-          <input class="compare-name" value="${b.name}" onchange="updateBond(${i},'name',this.value)">
-          <button class="btn-remove" onclick="removeBond(${i})">✕</button>
-        </div>
-        <div class="compare-inputs">
-          <div class="compare-input"><label>Купон %</label><input type="number" value="${b.cr}" step="0.1" onchange="updateBond(${i},'cr',this.value)"></div>
-          <div class="compare-input"><label>Цена %</label><input type="number" value="${b.price}" step="0.1" onchange="updateBond(${i},'price',this.value)"></div>
-          <div class="compare-input"><label>Погашение</label><input type="date" value="${b.maturity}" onchange="updateBond(${i},'maturity',this.value)"></div>
-          <div class="compare-input"><label>Куп/год</label><input type="number" value="${b.freq}" min="1" max="12" onchange="updateBond(${i},'freq',this.value)"></div>
-        </div>
-        <div class="compare-results">
-          <div class="compare-res-item"><div class="compare-res-label">Тек. дох.</div><div class="compare-res-value">${fmt(curY,'%')}</div></div>
-          <div class="compare-res-item"><div class="compare-res-label">YTM</div><div class="compare-res-value">${fmt(ytm,'%')}</div></div>
-          <div class="compare-res-item"><div class="compare-res-label">Дюрация</div><div class="compare-res-value">${fmt(dur,' л')}</div></div>
-        </div>
-      </div>`;
-
-    return { name: b.name, curY, ytm };
+    var searchInput = document.getElementById('cmpSearch' + i);
+    if (searchInput) {
+      searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); searchMoexForCompare(i); }
+      });
+    }
   });
 
-  const chartCont = document.getElementById('compareChartContainer');
-  if (bonds.length > 0) {
+  renderCompareResults();
+}
+
+function renderCompareResults() {
+  var pDate = getDate('purchaseDate') || new Date().toISOString().split('T')[0];
+  var data = [];
+
+  bonds.forEach(function(b, i) {
+    if (!b.name || !b.maturity) return;
+    var nom = b.nominal || 1000;
+    var ytm = calcYTM(nom, b.cr, b.freq, b.price, pDate, b.maturity);
+    var curY = b.price > 0 ? (b.cr / b.price) * 100 : 0;
+    var durResult = calcDuration(nom, b.cr, b.freq, b.price, pDate, b.maturity);
+    var dur = durResult.dur;
+
+    var resEl = document.getElementById('cmpRes' + i);
+    if (resEl) {
+      resEl.innerHTML =
+        '<div class="compare-res-item"><div class="compare-res-label">Тек. дох.</div><div class="compare-res-value">' + fmt(curY,'%') + '</div></div>' +
+        '<div class="compare-res-item"><div class="compare-res-label">YTM</div><div class="compare-res-value">' + fmt(ytm,'%') + '</div></div>' +
+        '<div class="compare-res-item"><div class="compare-res-label">Дюрация</div><div class="compare-res-value">' + fmt(dur,' л') + '</div></div>';
+    }
+
+    data.push({ name: b.name, curY: curY, ytm: ytm });
+  });
+
+  var chartCont = document.getElementById('compareChartContainer');
+  if (data.length > 0) {
     chartCont.style.display = 'block';
     if (compareChartInst) compareChartInst.destroy();
     compareChartInst = new Chart(document.getElementById('compareChart'), {
       type: 'bar',
       data: {
-        labels: data.map(d => d.name),
+        labels: data.map(function(d) { return d.name; }),
         datasets: [
-          { label: 'Текущая дох.', data: data.map(d => d.curY?.toFixed(2)), backgroundColor: 'rgba(12,107,88,0.35)', borderRadius: 4 },
-          { label: 'YTM', data: data.map(d => d.ytm?.toFixed(2)), backgroundColor: 'rgba(12,107,88,0.85)', borderRadius: 4 },
+          { label: 'Текущая дох.', data: data.map(function(d) { return d.curY ? d.curY.toFixed(2) : 0; }), backgroundColor: 'rgba(12,107,88,0.35)', borderRadius: 4 },
+          { label: 'YTM', data: data.map(function(d) { return d.ytm ? d.ytm.toFixed(2) : 0; }), backgroundColor: 'rgba(12,107,88,0.85)', borderRadius: 4 },
         ]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         scales: {
           x: { ticks: { color: '#6b7280', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
-          y: { ticks: { color: '#6b7280', callback: v => v + '%' }, grid: { color: 'rgba(0,0,0,0.05)' } }
+          y: { ticks: { color: '#6b7280', callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(0,0,0,0.05)' } }
         },
         plugins: { legend: { labels: { color: '#333', font: { size: 11 } } } }
       }
@@ -1202,8 +1348,7 @@ function renderCompare() {
     chartCont.style.display = 'none';
   }
 }
-
-// ==================== ДЕНЕЖНЫЕ ПОТОКИ ====================
+// ==================== ДЕНЕЖНЫЕ ПОТОКИ ====================// ==================== ДЕНЕЖНЫЕ ПОТОКИ ====================
 let flowsChartInst = null;
 
 function renderFlows() {
