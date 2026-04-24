@@ -9,24 +9,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --green: #0C6B58;
-    --green-light: #0e7d68;
-    --green-bg: rgba(12,107,88,0.06);
-    --green-border: rgba(12,107,88,0.15);
-    --green-border-strong: rgba(12,107,88,0.3);
-    --black: #1a1a1a;
-    --dark: #333333;
+    --green: #3B3FBF;
+    --green-light: #4A4ED0;
+    --green-bg: rgba(59,63,191,0.07);
+    --green-border: rgba(59,63,191,0.15);
+    --green-border-strong: rgba(59,63,191,0.3);
+    --black: #1a1a2e;
+    --dark: #2D2F6B;
     --muted: #6b7280;
-    --border: #e5e7eb;
-    --bg-card: #f9fafb;
-    --bg-page: #ffffff;
+    --border: #ddd8ce;
+    --bg-card: #ffffff;
+    --bg-page: #F5F0E8;
     --white: #ffffff;
-    --warm: #92400e;
-    --warm-bg: rgba(146,64,14,0.06);
-    --warm-border: rgba(146,64,14,0.15);
-    --red: #b91c1c;
-    --red-bg: rgba(185,28,28,0.04);
-    --red-border: rgba(185,28,28,0.12);
+    --warm: #E5A100;
+    --warm-bg: rgba(245,200,66,0.12);
+    --warm-border: rgba(245,200,66,0.35);
+    --red: #c0392b;
+    --red-bg: rgba(192,57,43,0.06);
+    --red-border: rgba(192,57,43,0.15);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -47,7 +47,7 @@
     width: 44px; height: 44px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
   }
-  .header-logo svg { width: 44px; height: 28px; }
+  .header-logo svg { width: 40px; height: 40px; }
   .header h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--black); }
   .header p { font-size: 12px; color: var(--muted); margin-top: 2px; letter-spacing: 0.3px; text-transform: uppercase; font-weight: 500; }
 
@@ -164,7 +164,7 @@
   .price-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   .price-item-label { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; font-weight: 500; }
   .price-item-value { font-size: 17px; font-weight: 800; margin-top: 4px; color: var(--black); }
-  .price-item-value.gold { color: var(--warm); }
+  .price-item-value.gold { color: #b8860b; }
 
   /* TAX BOX */
   .tax-box {
@@ -361,16 +361,9 @@
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-logo"><svg viewBox="0 0 120 60" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1a4a7a"/>
-      <stop offset="50%" stop-color="#1e5a9a"/>
-      <stop offset="100%" stop-color="#14406e"/>
-    </linearGradient>
-  </defs>
-  <path d="M30 10 C10 10 2 30 2 30 C2 30 10 50 30 50 C42 50 52 40 60 30 C68 40 78 50 90 50 C110 50 118 30 118 30 C118 30 110 10 90 10 C78 10 68 20 60 30 C52 20 42 10 30 10Z" fill="none" stroke="url(#g1)" stroke-width="8" stroke-linecap="round"/>
-  <path d="M30 10 C10 10 2 30 2 30 C2 30 10 50 30 50 C42 50 52 40 60 30 C68 40 78 50 90 50 C110 50 118 30 118 30 C118 30 110 10 90 10 C78 10 68 20 60 30 C52 20 42 10 30 10Z" fill="none" stroke="#c9a84c" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+  <div class="header-logo"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+  <rect width="44" height="44" rx="12" fill="#3B3FBF"/>
+  <text x="22" y="30" text-anchor="middle" fill="#ffffff" font-family="Inter,sans-serif" font-size="24" font-weight="800">P</text>
 </svg></div>
   <div>
     <h1>Калькулятор облигаций</h1>
@@ -1331,8 +1324,8 @@ function renderCompareResults() {
       data: {
         labels: data.map(function(d) { return d.name; }),
         datasets: [
-          { label: 'Текущая дох.', data: data.map(function(d) { return d.curY ? d.curY.toFixed(2) : 0; }), backgroundColor: 'rgba(12,107,88,0.35)', borderRadius: 4 },
-          { label: 'YTM', data: data.map(function(d) { return d.ytm ? d.ytm.toFixed(2) : 0; }), backgroundColor: 'rgba(12,107,88,0.85)', borderRadius: 4 },
+          { label: 'Текущая дох.', data: data.map(function(d) { return d.curY ? d.curY.toFixed(2) : 0; }), backgroundColor: 'rgba(59,63,191,0.3)', borderRadius: 4 },
+          { label: 'YTM', data: data.map(function(d) { return d.ytm ? d.ytm.toFixed(2) : 0; }), backgroundColor: 'rgba(59,63,191,0.85)', borderRadius: 4 },
         ]
       },
       options: {
