@@ -829,6 +829,40 @@ function pickBestRow(cols, rows, preferBoards) {
   var obj = {}; cols.forEach(function(c, i) { obj[c] = rows[0][i]; }); return obj;
 }
 
+// URL Фундаменталки (после деплоя на GitHub Pages)
+const FUNDAMENTALKA_URL = 'https://buneginatati.github.io/fundamentalka/';
+
+async function loadEmitterLinkForBond(secid) {
+  var wrap = document.getElementById('studyEmitterWrap');
+  if (!wrap) return;
+  try {
+    // /iss/securities/{secid}.json содержит мета-информацию, включая EMITENT_INN и EMITENT_TITLE
+    var resp = await fetch(MOEX_BASE + '/securities/' + encodeURIComponent(secid) + '.json?iss.meta=off&iss.only=description');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    var data = await resp.json();
+    var rows = (data.description && data.description.data) || [];
+    var meta = {};
+    rows.forEach(function(r) { if (r && r[0]) meta[r[0]] = r[2]; });
+    var inn = meta.EMITENT_INN;
+    var emitentName = meta.EMITENT_TITLE || meta.SECNAME;
+    if (!inn && !emitentName) return;
+
+    // Передаём в Фундаменталку по ИНН (точное совпадение в matchesEmitter) или по названию
+    var query = inn || emitentName;
+    var url = FUNDAMENTALKA_URL + '?company=' + encodeURIComponent(query);
+
+    wrap.innerHTML =
+      '<a href="' + url + '" target="_blank" rel="noopener noreferrer" style="' +
+        'display:inline-flex;align-items:center;gap:6px;padding:10px 16px;' +
+        'background:var(--green);color:#fff;border-radius:10px;font-weight:700;font-size:13px;' +
+        'text-decoration:none;letter-spacing:0.2px;">' +
+      '🔎 Изучить эмитента в Фундаменталке' +
+      '</a>';
+  } catch (err) {
+    console.error('loadEmitterLinkForBond fail:', err);
+  }
+}
+
 async function loadBondFromMoex(secid) {
   var status = document.getElementById('moexStatus');
   var results = document.getElementById('moexResults');
@@ -903,10 +937,14 @@ async function loadBondFromMoex(secid) {
         (sec.OFFERDATE ? ' · Оферта: ' + escHtml(sec.OFFERDATE) : '') +
         (md.YIELD ? ' · YTM MOEX: ' + Number(md.YIELD).toFixed(2) + '%' : '') +
       '</div>' +
+      '<div id="studyEmitterWrap" style="margin-top:10px;"></div>' +
     '</div>';
 
     status.textContent = 'Данные загружены с MOEX (' + (sec.BOARDID || '') + ')';
     status.className = 'moex-status success';
+
+    // Подгружаем ИНН эмитента и рисуем кнопку «🔎 Изучить эмитента»
+    loadEmitterLinkForBond(secid);
 
   } catch (err) {
     status.textContent = 'Не удалось загрузить ' + secid + '. Введите данные вручную.';
