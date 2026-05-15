@@ -438,9 +438,19 @@
         <span class="tax-total-value" id="res-ytmAfterTax">—</span>
       </div>
     </div>
+
+    <!-- ГРАФИК ЦЕНЫ ОБЛИГАЦИИ -->
+    <div class="chart-container" id="bondPriceBlock" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <h4 style="margin:0;">Динамика цены</h4>
+        <div id="bondPricePeriods" style="display:flex; gap:4px;"></div>
+      </div>
+      <div class="chart-wrap" style="height:220px;"><canvas id="bondPriceChart"></canvas></div>
+      <div id="bondPriceStats" style="margin-top:10px; font-size:11px; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-family: var(--font-mono);"></div>
+    </div>
+
   </div>
 
-  <!-- ===== СРАВНЕНИЕ ===== -->
   <div class="tab-content" id="tab-compare">
     <div class="screen-header">
       <div>
@@ -465,9 +475,13 @@
         <div class="screen-header-title" id="flowsBondName">Все выплаты</div>
       </div>
     </div>
-    <p style="font-size:13px;color:var(--muted);margin: 0 14px 14px;line-height:1.5">
+    <p style="font-size:13px;color:var(--muted);margin: 0 14px 8px;line-height:1.5">
       Купоны и возврат номинала при погашении — по датам.
     </p>
+    <div id="flowsAmortBanner" class="info-banner" style="display:none;">
+      <span class="info-glyph">i</span>
+      <span id="flowsAmortNote"></span>
+    </div>
     <div class="chart-container">
       <div class="chart-wrap"><canvas id="flowsChart"></canvas></div>
     </div>
@@ -845,7 +859,14 @@ async function loadBondFromMoex(secid) {
       window._moexCouponPeriod = sec.COUPONPERIOD;
     }
 
+    // Подтягиваем полную сетку купонов и амортизаций — нужна для правильного YTM,
+    // дюрации и cashflow у бумаг с амортизацией (например ОФЗ-АД) и переменными купонами.
+    await loadBondizationSchedule(secid);
+
     recalc();
+
+    // Загружаем график цены параллельно (не блокирует UI)
+    loadBondPriceChart(secid);
 
     var bondName = escHtml(sec.SHORTNAME || sec.SECNAME || secid);
     window._loadedBondName = sec.SHORTNAME || sec.SECNAME || secid;
@@ -910,6 +931,116 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+// ==================== ГРАФИК ЦЕНЫ ОБЛИГАЦИИ ====================
+var BOND_PRICE_CHART = null;
+var BOND_PRICE_TICKER = null;
+var BOND_PRICE_PERIOD = '1Y';
+const BOND_PERIODS = [
+  { code: '1M', label: '1 мес', days: 30 },
+  { code: '3M', label: '3 мес', days: 90 },
+  { code: '6M', label: '6 мес', days: 180 },
+  { code: '1Y', label: '1 год', days: 365 },
+  { code: 'MAX', label: '5 лет', days: 365 * 5 },
+];
+
+function loadBondPriceChart(secid) {
+  BOND_PRICE_TICKER = secid;
+  document.getElementById('bondPriceBlock').style.display = 'block';
+  var ctrl = document.getElementById('bondPricePeriods');
+  ctrl.innerHTML = BOND_PERIODS.map(function(p) {
+    return '<button class="chart-period-btn ' + (p.code === BOND_PRICE_PERIOD ? 'active' : '')
+      + '" onclick="setBondPeriod(\'' + p.code + '\')">' + p.label + '</button>';
+  }).join('');
+  drawBondPriceChart();
+}
+
+function setBondPeriod(code) {
+  BOND_PRICE_PERIOD = code;
+  document.querySelectorAll('#bondPricePeriods .chart-period-btn').forEach(function(b) {
+    b.classList.toggle('active', b.textContent === (BOND_PERIODS.find(function(p) { return p.code === code; }) || {}).label);
+  });
+  drawBondPriceChart();
+}
+
+async function drawBondPriceChart() {
+  var ticker = BOND_PRICE_TICKER;
+  if (!ticker) return;
+  var period = BOND_PERIODS.find(function(p) { return p.code === BOND_PRICE_PERIOD; }) || BOND_PERIODS[3];
+  var to = new Date();
+  var from = new Date(to.getTime() - period.days * 86400000);
+  var fromStr = from.toISOString().slice(0, 10);
+  // MOEX интервалы: 24=день, 7=неделя, 31=месяц
+  var interval = period.days <= 180 ? 24 : (period.days <= 1095 ? 7 : 31);
+
+  var statsEl = document.getElementById('bondPriceStats');
+  statsEl.textContent = 'Загружаю историю цены...';
+
+  try {
+    var url = MOEX_BASE + '/engines/stock/markets/bonds/securities/' + encodeURIComponent(ticker)
+      + '/candles.json?from=' + fromStr + '&interval=' + interval + '&iss.meta=off';
+    var data = await moexFetch(url);
+    var cols = data.candles.columns;
+    var rows = data.candles.data;
+    var iClose = cols.indexOf('close');
+    var iBegin = cols.indexOf('begin');
+    var labels = rows.map(function(r) { return r[iBegin].slice(0, 10); });
+    var closes = rows.map(function(r) { return r[iClose]; });
+
+    if (closes.length === 0) {
+      statsEl.textContent = 'Нет данных за выбранный период.';
+      if (BOND_PRICE_CHART) { BOND_PRICE_CHART.destroy(); BOND_PRICE_CHART = null; }
+      return;
+    }
+
+    var ctx = document.getElementById('bondPriceChart').getContext('2d');
+    if (BOND_PRICE_CHART) BOND_PRICE_CHART.destroy();
+    BOND_PRICE_CHART = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: ticker + ' · цена, % от номинала',
+          data: closes,
+          borderColor: '#3429D2',
+          backgroundColor: 'rgba(52,41,210,0.10)',
+          fill: true, tension: 0.25,
+          pointRadius: 0, borderWidth: 2.2,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0B0B0B', titleColor: '#F1ECE0', bodyColor: '#F1ECE0',
+            displayColors: false,
+            callbacks: {
+              label: function(ctx) { return Number(ctx.raw).toFixed(2) + '%'; }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#6B5F52', maxRotation: 0, autoSkip: true, maxTicksLimit: 6, font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: '#6B5F52', callback: v => v + '%', font: { size: 10 } }, grid: { color: 'rgba(11,11,11,0.06)' } },
+        },
+      }
+    });
+
+    var first = closes[0], last = closes[closes.length - 1];
+    var min = Math.min.apply(null, closes), max = Math.max.apply(null, closes);
+    var diff = last - first, diffPct = (diff / first) * 100;
+    var diffSign = diff >= 0 ? '+' : '';
+    var diffColor = diff >= 0 ? '#1F6E44' : '#8A2920';
+    statsEl.innerHTML =
+      '<span>мин <b>' + min.toFixed(2) + '%</b></span>' +
+      '<span style="color:' + diffColor + ';">Δ ' + diffSign + diffPct.toFixed(2) + '%</span>' +
+      '<span>макс <b>' + max.toFixed(2) + '%</b></span>';
+  } catch (err) {
+    statsEl.textContent = 'Не удалось загрузить историю цены.';
+    console.error('bond price chart fail', err);
+  }
+}
+
 // ==================== TABS ====================
 function switchTab(tab) {
   document.querySelectorAll('.tab, .bottom-tab').forEach(t => {
@@ -933,30 +1064,125 @@ function daysBetween(d1, d2) {
 }
 function yearFrac(d1, d2) { return daysBetween(d1, d2) / 365; }
 
+// MOEX bondization — точная сетка купонов и амортизаций для загруженной облигации.
+// Заполняется в loadBondizationSchedule, очищается при ручном редактировании полей.
+async function loadBondizationSchedule(secid) {
+  window._moexBondization = null;
+  try {
+    var url = MOEX_BASE + '/securities/' + encodeURIComponent(secid) + '/bondization.json?iss.meta=off&limit=100';
+    var bz = await moexFetch(url);
+    var coupons = [];
+    var amortizations = [];
+
+    if (bz.coupons && bz.coupons.columns && bz.coupons.data) {
+      var cCols = bz.coupons.columns;
+      var i_cd = cCols.indexOf('coupondate');
+      var i_cv = cCols.indexOf('value');
+      var i_cvp = cCols.indexOf('valueprc');
+      var i_face = cCols.indexOf('initialfacevalue');
+      bz.coupons.data.forEach(function(r) {
+        var date = r[i_cd];
+        var val = r[i_cv];
+        var valPrc = i_cvp >= 0 ? r[i_cvp] : null;
+        if (!date) return;
+        coupons.push({
+          date: date,
+          value: (val !== null && val !== '' && val !== undefined) ? Number(val) : null,
+          valuePrc: (valPrc !== null && valPrc !== '' && valPrc !== undefined) ? Number(valPrc) : null,
+          face: (i_face >= 0) ? Number(r[i_face]) : null
+        });
+      });
+    }
+
+    if (bz.amortizations && bz.amortizations.columns && bz.amortizations.data) {
+      var aCols = bz.amortizations.columns;
+      var i_ad = aCols.indexOf('amortdate');
+      var i_av = aCols.indexOf('value_rub');
+      if (i_av < 0) i_av = aCols.indexOf('value');
+      var i_avp = aCols.indexOf('valueprc');
+      var i_aface = aCols.indexOf('facevalue');
+      bz.amortizations.data.forEach(function(r) {
+        var date = r[i_ad];
+        if (!date) return;
+        amortizations.push({
+          date: date,
+          value: (i_av >= 0 && r[i_av] !== null && r[i_av] !== '') ? Number(r[i_av]) : null,
+          valuePrc: (i_avp >= 0 && r[i_avp] !== null && r[i_avp] !== '') ? Number(r[i_avp]) : null,
+          faceAfter: (i_aface >= 0) ? Number(r[i_aface]) : null
+        });
+      });
+    }
+
+    window._moexBondization = {
+      secid: secid,
+      coupons: coupons,
+      amortizations: amortizations,
+      hasAmortization: amortizations.length > 1
+    };
+    console.log('Bondization loaded', secid, 'coupons:', coupons.length, 'amorts:', amortizations.length);
+  } catch (err) {
+    console.warn('Bondization fetch failed for ' + secid + ':', err);
+  }
+}
+
 function calcCashflows(nom, cr, freq, pDate, eDate) {
-  const cpp = (nom * cr / 100) / freq;
-  const pDays = Math.round(365 / freq);
-  const flows = [];
   const purchase = new Date(pDate);
   const end = new Date(eDate);
+  const flows = [];
 
-  // Если есть данные о следующем купоне от MOEX — строим от него
+  // 1) Если есть точная сетка с MOEX (bondization) — используем её. Это критично для
+  // облигаций с амортизацией и переменными купонами.
+  var bz = window._moexBondization;
+  if (bz && (bz.coupons.length || bz.amortizations.length)) {
+    // Аккумулируем cashflow по дате (купон + амортизация в один день складываются)
+    var byDate = {};
+    bz.coupons.forEach(function(c) {
+      var d = c.date;
+      if (!d) return;
+      var dt = new Date(d);
+      if (dt <= purchase || dt > end) return;
+      var cpn = c.value;
+      // Если value пустое — считаем из ставки и периода (фиксированный купон)
+      if (cpn === null || cpn === undefined || isNaN(cpn)) cpn = (nom * cr / 100) / freq;
+      if (!byDate[d]) byDate[d] = { date: dt, coupon: 0, nominal: 0 };
+      byDate[d].coupon += cpn;
+    });
+    bz.amortizations.forEach(function(a) {
+      var d = a.date;
+      if (!d) return;
+      var dt = new Date(d);
+      if (dt <= purchase || dt > end) return;
+      var amt = a.value;
+      // value может быть null для будущих амортизаций по плавающим — но у фикс. бумаг есть
+      if ((amt === null || amt === undefined || isNaN(amt)) && a.valuePrc !== null) {
+        amt = nom * (a.valuePrc / 100);
+      }
+      if (!amt || isNaN(amt)) return;
+      if (!byDate[d]) byDate[d] = { date: dt, coupon: 0, nominal: 0 };
+      byDate[d].nominal += amt;
+    });
+    var keys = Object.keys(byDate).sort();
+    keys.forEach(function(k) { flows.push(byDate[k]); });
+    if (flows.length > 0) return flows;
+    // Если по какой-то причине ничего не получилось — фоллбэк ниже.
+  }
+
+  // 2) Фоллбэк: классический формульный расчёт для ручного ввода / без MOEX.
+  const cpp = (nom * cr / 100) / freq;
+  const pDays = Math.round(365 / freq);
   var startDate;
   if (window._moexNextCoupon && window._moexCouponPeriod) {
     startDate = new Date(window._moexNextCoupon);
-    // Откатываемся назад, чтобы найти первый купон после покупки
     while (startDate > purchase) {
       var prev = new Date(startDate);
       prev.setDate(prev.getDate() - window._moexCouponPeriod);
       if (prev <= purchase) break;
       startDate = prev;
     }
-    // Если startDate оказался ДО покупки — вперёд на 1 период
     if (startDate <= purchase) {
       startDate.setDate(startDate.getDate() + window._moexCouponPeriod);
     }
   } else {
-    // Фоллбэк: от даты покупки + период
     startDate = new Date(purchase);
     startDate.setDate(startDate.getDate() + pDays);
   }
@@ -1358,7 +1584,21 @@ function renderFlows() {
   if (nameEl) {
     const bName = window._loadedBondName || '';
     const bTicker = window._loadedBondTicker || '';
-    nameEl.textContent = bName ? (bName + (bTicker ? ' · ' + bTicker : '')) : '';
+    nameEl.textContent = bName ? (bName + (bTicker ? ' · ' + bTicker : '')) : 'Все выплаты';
+  }
+
+  // Если у бумаги амортизация — выводим инфо-баннер
+  var bz = window._moexBondization;
+  const banner = document.getElementById('flowsAmortBanner');
+  const noteEl = document.getElementById('flowsAmortNote');
+  if (banner && noteEl) {
+    if (bz && bz.hasAmortization) {
+      banner.style.display = 'flex';
+      noteEl.innerHTML = '<b>Амортизируемая облигация:</b> номинал возвращается частями по графику ниже, ' +
+        bz.amortizations.length + ' выплат суммарно. Купон считается от уменьшающегося номинала.';
+    } else {
+      banner.style.display = 'none';
+    }
   }
 
   const flows = calcCashflows(nom, cr, freq, pDate, mDate);
@@ -1400,16 +1640,25 @@ function renderFlows() {
 }
 
 // ==================== INIT ====================
+function resetMoexCache() {
+  window._moexNextCoupon = null;
+  window._moexCouponPeriod = null;
+  window._moexBondization = null;
+  // График цены тоже скрываем — он привязан к конкретной MOEX-облигации
+  BOND_PRICE_TICKER = null;
+  if (BOND_PRICE_CHART) { BOND_PRICE_CHART.destroy(); BOND_PRICE_CHART = null; }
+  var blk = document.getElementById('bondPriceBlock');
+  if (blk) blk.style.display = 'none';
+}
 document.querySelectorAll('.input-field').forEach(el => {
+  // Поиск MOEX не должен сбрасывать кеш загруженной облигации
+  if (el.id === 'moexSearch') return;
   el.addEventListener('input', function() {
-    // Сбрасываем MOEX-кеш при ручном редактировании
-    window._moexNextCoupon = null;
-    window._moexCouponPeriod = null;
+    resetMoexCache();
     recalc();
   });
   el.addEventListener('change', function() {
-    window._moexNextCoupon = null;
-    window._moexCouponPeriod = null;
+    resetMoexCache();
     recalc();
   });
 });
