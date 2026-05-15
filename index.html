@@ -7,271 +7,329 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <!-- Шрифты подгружаются внутри investprosto-design.css (Onest + JetBrains Mono) -->
-<link rel="stylesheet" href="investprosto-design.css?v=graphite2">
+<link rel="stylesheet" href="investprosto-design.css?v=ref1">
 <style>
-  /* Локальные стили вынесены в investprosto-design.css */
+  /* ════════ Облигатор — стиль по образцу: чёрный фон, пастельные плитки ════════ */
 
-  /* Локальные правила для Облигатора (специфичные для калькулятора) */
-  /* Поля-плитки: каждый параметр в своей цветной карточке (стиль «Голубых фишек») */
+  /* Каждый параметр — пастельная плитка, контент прямо на ней (без чёрной вставки) */
   .input-group {
-    margin: 0 14px 8px;
-    padding: 12px 14px;
-    border-radius: 16px;
-    background: var(--bg-raised);
-    border: 1px solid var(--line);
+    margin: 0 14px 10px;
+    padding: 14px 16px 16px;
+    border-radius: 22px;
+    border: none;
+    background: var(--tile-blue);
   }
   .input-row {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-    margin: 0 14px 8px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin: 0 14px 10px;
   }
   .input-row .input-group { margin: 0; }
 
-  /* Яркие цветные плитки-поля (стиль «Голубых фишек») */
-  .input-group { border: none; }
-  .input-group.tint-blue  { background: #A8D5F0; }
-  .input-group.tint-mint  { background: #C7E5C4; }
-  .input-group.tint-lav   { background: #C9B8FF; }
-  .input-group.tint-cream { background: #F0C24A; }
-  .input-group.tint-coral { background: #F8B5A6; }
-  .input-group .input-label { color: rgba(11,11,11,0.62); }
-  .input-group .input-label .hint-btn { color: rgba(11,11,11,0.5); border-color: rgba(11,11,11,0.38); }
+  .input-group.tint-blue  { background: var(--tile-blue); }
+  .input-group.tint-mint  { background: var(--tile-mint); }
+  .input-group.tint-lav   { background: var(--tile-lav); }
+  .input-group.tint-cream { background: var(--tile-cream); }
+  .input-group.tint-coral { background: var(--tile-pink); }
 
-  /* Сам инпут — чёрное поле, белый шрифт */
-  .input-group .input-field {
-    background: #0B0B0B;
-    color: #FFFFFF;
-    border: 1px solid rgba(0,0,0,0.25);
-  }
-  .input-group .input-field::placeholder { color: rgba(255,255,255,0.4); }
-  .input-group .input-field:focus {
-    border-color: #0B0B0B;
-    box-shadow: 0 0 0 3px rgba(11,11,11,0.22);
-  }
-  .input-group .input-suffix { color: rgba(255,255,255,0.55); }
-  .input-group .input-field[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(1) opacity(0.6);
-  }
-  /* Кнопка поиска внутри яркой плитки — чёрная, в тон полю */
-  .input-group .moex-search-btn {
-    background: #0B0B0B; color: #FFFFFF;
-  }
-  .input-group .moex-search-btn:hover { background: #1C1F26; }
-  /* Результаты поиска внутри плитки — на белой подложке для читаемости */
-  .input-group .moex-results { margin-top: 8px; }
-  .input-group .moex-status { color: rgba(11,11,11,0.6); padding: 6px 0 0; }
-  .input-group .moex-status.error { color: #8a2920; }
-  .input-group .moex-status.success { color: #1f6e44; }
   .input-label {
     display: flex; align-items: center; gap: 6px;
-    font-size: 11px; font-weight: 600;
-    color: var(--muted); letter-spacing: 0.04em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
+    font-size: 10.5px; font-weight: 700;
+    color: var(--on-tile-soft);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    margin-bottom: 8px;
   }
-  .input-wrap { position: relative; }
-  .input-wrap .input-field { padding-right: 38px; }
-  .input-suffix {
-    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-    color: var(--muted); font-size: 13px; font-weight: 600;
-    pointer-events: none;
+  .input-group .input-label { color: var(--on-tile-soft); }
+
+  /* Поле — прозрачное, значение тёмным крупно прямо на плитке */
+  .input-field {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--on-tile);
     font-family: var(--font-mono);
+    font-size: 22px; font-weight: 800;
+    letter-spacing: -0.02em;
+    padding: 0;
   }
+  .input-group .input-field::placeholder { color: rgba(24,24,24,0.38); font-weight: 600; }
+  .input-group .input-field:focus { color: var(--on-tile); }
+  /* Тонкая «линия фокуса» снизу — деликатный индикатор активного поля */
+  .input-wrap, .input-group > .input-field, .input-group > .input-wrap {
+    position: relative;
+  }
+  .input-group .input-field:focus {
+    box-shadow: 0 2px 0 -1px rgba(24,24,24,0.45);
+  }
+  .input-suffix {
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    color: var(--on-tile-soft); font-size: 14px; font-weight: 700;
+    pointer-events: none; font-family: var(--font-mono);
+  }
+  .input-wrap .input-field { padding-right: 26px; }
+  .input-field[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0) opacity(0.55);
+    cursor: pointer;
+  }
+  .hint-btn {
+    background: transparent; border: 1.2px solid rgba(24,24,24,0.38);
+    color: rgba(24,24,24,0.55);
+  }
+
+  /* Поиск облигации — синяя плитка, кнопка синяя-акцент */
+  .moex-search-wrap { display: flex; gap: 8px; }
+  .moex-search-wrap .input-field {
+    flex: 1; font-size: 16px; font-weight: 600;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.55);
+    border-radius: 12px;
+  }
+  .moex-search-btn {
+    padding: 10px 18px;
+    background: var(--acc-blue); color: #FFFFFF;
+    border: none; border-radius: 12px;
+    font-family: var(--font-sans); font-size: 14px; font-weight: 700;
+    cursor: pointer; white-space: nowrap;
+  }
+  .moex-search-btn:hover { background: var(--acc-blue-deep); }
+  .moex-status { font-size: 11px; color: var(--on-tile-soft); padding: 8px 0 0; font-weight: 600; }
+  .moex-status.error { color: #8a2920; }
+  .moex-status.success { color: #1a5638; }
+  .moex-results { margin-top: 8px; max-height: 280px; overflow-y: auto; }
+  .moex-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 12px; margin-bottom: 6px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.5);
+    border: none; cursor: pointer;
+  }
+  .moex-item:hover { background: rgba(255,255,255,0.78); }
+  .moex-item-ticker {
+    min-width: 56px; padding: 4px 7px; border-radius: 7px;
+    background: var(--acc-blue); color: #FFFFFF;
+    font-family: var(--font-mono); font-weight: 700; font-size: 11px;
+    text-align: center;
+  }
+  .moex-item-body { flex: 1; min-width: 0; }
+  .moex-item-name { font-size: 14px; font-weight: 700; color: var(--on-tile); }
+  .moex-item-details { font-size: 10.5px; color: var(--on-tile-soft); margin-top: 2px; }
+  .moex-item-arrow { flex-shrink: 0; width: 12px; height: 14px; color: rgba(24,24,24,0.4); }
+  .moex-show-all-btn {
+    display: block; width: 100%; margin-top: 6px; padding: 10px;
+    background: rgba(255,255,255,0.5); border: none; border-radius: 12px;
+    color: var(--acc-blue); font-family: var(--font-sans);
+    font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  #studyEmitterWrap a {
+    background: var(--acc-blue) !important; color: #FFFFFF !important;
+  }
+
+  /* Результаты — пастельные плитки, тёмный текст */
   .results-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
     padding: 0 14px; margin-bottom: 10px;
   }
   .result-card {
-    background: var(--bg-raised);
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    padding: 14px 16px;
+    background: var(--tile-mint);
+    border: none;
+    border-radius: 22px;
+    padding: 16px 18px;
   }
+  .results-grid:nth-of-type(odd)  .result-card:first-child { background: var(--tile-cream); }
+  .results-grid:nth-of-type(even) .result-card:first-child { background: var(--tile-lav); }
   .result-card.highlight {
-    background: var(--acc-blue); color: #0E1116;
-    border-color: transparent;
+    background: var(--acc-blue);
+    border: none;
   }
-  .result-card.highlight .result-label { color: rgba(14,17,22,0.6); }
-  .result-card.highlight .result-value { color: #0E1116; }
   .result-label {
-    font-size: 11px; font-weight: 600;
-    color: var(--muted); letter-spacing: 0.04em;
+    font-size: 10.5px; font-weight: 700;
+    color: var(--on-tile-soft); letter-spacing: 0.06em;
     text-transform: uppercase;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     display: flex; align-items: center; gap: 5px;
   }
+  .result-card.highlight .result-label { color: rgba(255,255,255,0.72); }
   .result-value {
-    font-size: 24px; font-weight: 800; color: var(--text);
+    font-size: 26px; font-weight: 800; color: var(--on-tile);
     letter-spacing: -0.025em; line-height: 1;
     font-family: var(--font-mono);
   }
-  .result-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .result-card.highlight .result-value { color: #FFFFFF; }
+  .result-sub { font-size: 11px; color: var(--on-tile-soft); margin-top: 4px; }
+  .result-card.highlight .result-sub { color: rgba(255,255,255,0.7); }
+  .result-card .hint-btn { color: rgba(24,24,24,0.5); border-color: rgba(24,24,24,0.35); }
+  .result-card.highlight .hint-btn { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.5); }
 
-  /* Цена и НКД — тёплая бенто-плитка */
+  /* Цена и НКД — кремовая плитка */
   .price-box {
-    margin: 4px 14px 12px;
-    padding: 16px 18px;
-    background: var(--acc-cream);
-    border-radius: 22px;
-    color: #3a2e0f;
+    margin: 0 14px 10px;
+    padding: 18px 20px;
+    background: var(--tile-cream);
+    border-radius: 24px;
+    color: var(--on-tile);
   }
   .price-box h4 {
     display: flex; align-items: center; gap: 6px;
-    font-size: 11px; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.05em;
-    color: rgba(58,46,15,0.7);
-    margin-bottom: 12px;
+    font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--on-tile-soft);
+    margin-bottom: 14px;
   }
-  .price-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .price-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
   .price-item-label {
     display: flex; align-items: center; gap: 4px;
-    font-size: 10.5px; font-weight: 600;
-    color: rgba(58,46,15,0.65);
-    letter-spacing: 0.02em;
+    font-size: 10px; font-weight: 600;
+    color: var(--on-tile-soft); letter-spacing: 0.02em;
   }
   .price-item-value {
     font-size: 18px; font-weight: 800;
-    color: #3a2e0f; margin-top: 4px;
-    font-family: var(--font-mono);
-    letter-spacing: -0.02em;
+    color: var(--on-tile); margin-top: 5px;
+    font-family: var(--font-mono); letter-spacing: -0.02em;
   }
-  .price-item-value.gold { color: #8a6300; }
+  .price-item-value.gold { color: #7a4f00; }
+  .price-box .hint-btn { color: rgba(24,24,24,0.5); border-color: rgba(24,24,24,0.35); }
 
-  /* Налоги — коралловая плитка */
+  /* Налоги — розовая плитка */
   .tax-box {
-    margin: 0 14px 12px;
-    padding: 16px 18px;
-    background: var(--tl-red-bg);
-    border: 1px solid rgba(217,122,110,0.28);
-    border-radius: 22px;
+    margin: 0 14px 10px;
+    padding: 18px 20px;
+    background: var(--tile-pink);
+    border: none;
+    border-radius: 24px;
+    color: var(--on-tile);
   }
   .tax-box h4 {
     display: flex; align-items: center; gap: 6px;
-    font-size: 11px; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.05em;
-    color: var(--tl-red);
-    margin-bottom: 12px;
+    font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--on-tile-soft);
+    margin-bottom: 14px;
   }
-  .tax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .tax-total {
-    margin-top: 12px; padding-top: 12px;
-    border-top: 1px solid rgba(217,122,110,0.20);
+    margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid rgba(24,24,24,0.15);
     display: flex; justify-content: space-between; align-items: center;
   }
-  .tax-total-label { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .tax-total-label { font-size: 12px; color: var(--on-tile-soft); font-weight: 600; }
   .tax-total-value {
-    font-size: 20px; font-weight: 800; color: var(--text);
+    font-size: 20px; font-weight: 800; color: var(--on-tile);
     font-family: var(--font-mono); letter-spacing: -0.02em;
   }
+  .tax-box .hint-btn { color: rgba(24,24,24,0.5); border-color: rgba(24,24,24,0.35); }
 
-  /* MOEX результаты для Облигатора */
-  .moex-search-wrap {
-    display: flex; gap: 8px; padding: 0;
-    margin-bottom: 0;
-  }
-
-  /* Compare карточки */
+  /* Compare — пастельные карточки */
   .compare-header {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 0 14px; margin-bottom: 12px;
+    padding: 0 14px; margin-bottom: 4px;
   }
   .compare-card {
     margin: 0 14px 10px;
     padding: 16px 18px;
-    background: var(--bg-raised);
-    border: 1px solid var(--line);
-    border-radius: 18px;
+    background: var(--tile-lav);
+    border: none;
+    border-radius: 20px;
   }
+  .compare-card:nth-child(even) { background: var(--tile-mint); }
   .compare-card-header {
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 12px;
   }
   .compare-name {
-    background: transparent; border: none; color: var(--text);
-    font-size: 15px; font-weight: 700;
-    outline: none; width: 70%;
-    font-family: var(--font-sans);
+    background: transparent; border: none; color: var(--on-tile);
+    font-size: 15px; font-weight: 800;
+    outline: none; width: 70%; font-family: var(--font-sans);
   }
   .btn-remove {
-    background: transparent; border: none; color: var(--tl-red);
-    font-size: 22px; cursor: pointer; opacity: 0.6;
-    line-height: 1;
+    background: transparent; border: none; color: rgba(24,24,24,0.5);
+    font-size: 22px; cursor: pointer; line-height: 1;
   }
-  .btn-remove:hover { opacity: 1; }
+  .btn-remove:hover { color: #8a2920; }
   .compare-inputs {
     display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
     margin-bottom: 12px;
   }
   .compare-input label {
-    font-size: 10.5px; font-weight: 600;
-    color: var(--muted); display: block;
+    font-size: 10px; font-weight: 600;
+    color: var(--on-tile-soft); display: block;
     margin-bottom: 4px;
     letter-spacing: 0.04em; text-transform: uppercase;
   }
   .compare-input input {
     width: 100%; padding: 9px 11px;
-    background: var(--bg-page);
-    border: 1px solid var(--line); border-radius: 10px;
-    color: var(--text); font-size: 14px; font-weight: 500;
-    outline: none; font-family: var(--font-sans);
+    background: rgba(255,255,255,0.5);
+    border: none; border-radius: 10px;
+    color: var(--on-tile); font-size: 14px; font-weight: 700;
+    outline: none; font-family: var(--font-mono);
   }
-  .compare-input input:focus {
-    border-color: var(--acc-blue);
-    box-shadow: 0 0 0 3px var(--acc-blue-bg);
-  }
+  .compare-input input:focus { background: rgba(255,255,255,0.85); }
   .compare-results {
     display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
-    padding-top: 12px; border-top: 1px solid var(--line);
+    padding-top: 12px; border-top: 1px solid rgba(24,24,24,0.15);
   }
   .compare-res-item { text-align: center; }
   .compare-res-label {
-    font-size: 10px; color: var(--muted);
-    font-weight: 600; letter-spacing: 0.04em;
-    text-transform: uppercase;
+    font-size: 9.5px; color: var(--on-tile-soft);
+    font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
   }
   .compare-res-value {
     font-size: 17px; font-weight: 800;
-    color: var(--acc-blue); margin-top: 2px;
+    color: var(--on-tile); margin-top: 2px;
     font-family: var(--font-mono);
   }
+  .compare-card .moex-search-wrap input {
+    flex: 1; padding: 9px 11px; border-radius: 10px;
+    background: rgba(255,255,255,0.5); border: none;
+    color: var(--on-tile); font-family: var(--font-sans); font-size: 14px;
+    outline: none;
+  }
+  .compare-card .moex-item { background: rgba(255,255,255,0.5); }
+  .compare-card .moex-status { color: var(--on-tile-soft); }
 
-  /* Charts */
+  /* Charts — на пастельной плитке */
   .chart-container {
-    margin: 0 14px 14px;
-    background: var(--bg-raised);
-    border: 1px solid var(--line);
-    border-radius: 18px;
-    padding: 16px 18px;
+    margin: 0 14px 12px;
+    background: var(--tile-blue);
+    border: none;
+    border-radius: 22px;
+    padding: 18px 20px;
   }
   .chart-container h4 {
-    font-size: 11px; font-weight: 700;
-    color: var(--muted); margin-bottom: 12px;
-    letter-spacing: 0.05em; text-transform: uppercase;
+    font-size: 10.5px; font-weight: 700;
+    color: var(--on-tile-soft); margin-bottom: 14px;
+    letter-spacing: 0.06em; text-transform: uppercase;
   }
   .chart-wrap { position: relative; width: 100%; height: 220px; }
+  .chart-period-btn {
+    padding: 5px 10px; border-radius: 999px;
+    border: 1px solid rgba(24,24,24,0.25);
+    background: transparent; color: rgba(24,24,24,0.65);
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    cursor: pointer;
+  }
+  .chart-period-btn.active { background: var(--acc-blue); color: #FFFFFF; border-color: var(--acc-blue); }
+  #bondPriceStats { color: rgba(24,24,24,0.62) !important; }
 
-  /* Flows table */
+  /* Flows table — на синей плитке */
   .flows-table {
-    width: 100%; border-collapse: collapse;
-    font-size: 13px; margin: 0 14px;
-    width: calc(100% - 28px);
-    font-family: var(--font-mono);
-    color: var(--text);
+    width: calc(100% - 28px); margin: 0 14px;
+    border-collapse: collapse; font-size: 13px;
+    font-family: var(--font-mono); color: var(--text);
   }
   .flows-table th {
     padding: 10px 12px; text-align: left;
     color: var(--muted); font-weight: 600;
     font-size: 10px; letter-spacing: 0.05em;
     border-bottom: 1px solid var(--line);
-    text-transform: uppercase;
-    font-family: var(--font-sans);
+    text-transform: uppercase; font-family: var(--font-sans);
   }
   .flows-table td {
     padding: 10px 12px;
     border-bottom: 1px solid var(--line);
     color: var(--text-dim);
   }
-  .flows-table .amount-coupon { color: var(--tl-green); font-weight: 700; }
-  .flows-table .amount-nominal { color: var(--acc-cream); font-weight: 700; }
+  .flows-table .amount-coupon { color: #8FD0A5; font-weight: 700; }
+  .flows-table .amount-nominal { color: #C9B8FF; font-weight: 700; }
   .flows-table .amount-total { font-weight: 800; color: var(--text); }
 </style>
 </head>

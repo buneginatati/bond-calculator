@@ -7,29 +7,40 @@
 
 /* ---------- TOKENS ---------- */
 :root {
-  /* Soft graphite surfaces — мягкий тёмный, без «угольного провала» */
-  --bg-page:      #1C1F26;
-  --bg-surface:   #242832;
-  --bg-raised:    #2B2F3A;
-  --bg-overlay:   #333845;
+  /* Чёрный фон + пастельные плитки + синий #3429D2 акцент (по образцу) */
+  --bg-page:      #0A0A0A;
+  --bg-surface:   #121212;
+  --bg-raised:    #1A1A1A;
+  --bg-overlay:   #1F1F1F;
 
-  --line:         rgba(255,255,255,0.09);
+  --line:         rgba(255,255,255,0.08);
   --line-strong:  rgba(255,255,255,0.16);
 
   --text:         #F4F2EC;
-  --text-dim:     #C2C4CC;
-  --muted:        #9AA0AC;
-  --dim:          #6B7280;
+  --text-dim:     #C8C8C2;
+  --muted:        #9A9A93;
+  --dim:          #6E6E68;
 
-  /* Brand accents */
-  --acc-blue:       #A8D5F0;
-  --acc-blue-deep:  #6AB5E0;
-  --acc-blue-bg:    rgba(168,213,240,0.12);
-  --acc-blue-line:  rgba(168,213,240,0.28);
+  /* На пастельных плитках текст тёмный */
+  --on-tile:      #181818;
+  --on-tile-soft: rgba(24,24,24,0.62);
 
-  --acc-lav:    #C9B8FF;
-  --acc-mint:   #B8E5C9;
-  --acc-cream:  #F4E6C1;
+  /* Brand accent — фирменный электрик-синий (как в шпаргалке) */
+  --acc-blue:       #3429D2;
+  --acc-blue-deep:  #2A22A8;
+  --acc-blue-bg:    rgba(52,41,210,0.14);
+  --acc-blue-line:  rgba(52,41,210,0.30);
+
+  /* Пастельные цвета плиток */
+  --tile-pink:  #F0CBD8;
+  --tile-mint:  #C7E5C4;
+  --tile-lav:   #D2C8F0;
+  --tile-cream: #EFE3AC;
+  --tile-blue:  #BFDBEC;
+
+  --acc-lav:    #D2C8F0;
+  --acc-mint:   #C7E5C4;
+  --acc-cream:  #EFE3AC;
   --acc-orange: #E86A3A;
 
   /* Traffic light (pastel, educational) */
