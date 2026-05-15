@@ -7,7 +7,7 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <!-- Шрифты подгружаются внутри investprosto-design.css (Onest + JetBrains Mono) -->
-<link rel="stylesheet" href="investprosto-design.css?v=ref2">
+<link rel="stylesheet" href="investprosto-design.css?v=ref3">
 <style>
   /* ════════ Облигатор — стиль по образцу: чёрный фон, пастельные плитки ════════ */
 
@@ -286,29 +286,36 @@
   .compare-card .moex-item { background: rgba(255,255,255,0.5); }
   .compare-card .moex-status { color: var(--on-tile-soft); }
 
-  /* Charts — на пастельной плитке */
+  /* Charts — ультрамариновая плитка, линии и цифры белым */
   .chart-container {
     margin: 0 14px 12px;
-    background: var(--tile-blue);
+    background: #3429D2;
     border: none;
     border-radius: 22px;
     padding: 18px 20px;
+    color: #FFFFFF;
   }
   .chart-container h4 {
     font-size: 10.5px; font-weight: 700;
-    color: var(--on-tile-soft); margin-bottom: 14px;
+    color: rgba(255,255,255,0.78); margin-bottom: 14px;
     letter-spacing: 0.06em; text-transform: uppercase;
   }
   .chart-wrap { position: relative; width: 100%; height: 220px; }
   .chart-period-btn {
     padding: 5px 10px; border-radius: 999px;
-    border: 1px solid rgba(24,24,24,0.25);
-    background: transparent; color: rgba(24,24,24,0.65);
+    border: 1px solid rgba(255,255,255,0.35);
+    background: transparent; color: rgba(255,255,255,0.8);
     font-family: var(--font-mono); font-size: 11px; font-weight: 600;
     cursor: pointer;
   }
-  .chart-period-btn.active { background: var(--acc-blue); color: #FFFFFF; border-color: var(--acc-blue); }
-  #bondPriceStats { color: rgba(24,24,24,0.62) !important; }
+  .chart-period-btn.active { background: #FFFFFF; color: #3429D2; border-color: #FFFFFF; }
+  #bondPriceStats { color: rgba(255,255,255,0.78) !important; }
+  #bondPriceStats b { color: #FFFFFF; }
+  /* Сводная таблица сравнения внутри ультрамариновой плитки — белый текст */
+  .chart-container .cmp-table,
+  .chart-container table { color: #FFFFFF; }
+  .chart-container .cmp-table th { color: rgba(255,255,255,0.7); }
+  .chart-container .cmp-table td { color: #FFFFFF; border-color: rgba(255,255,255,0.18); }
 
   /* Flows table — на синей плитке */
   .flows-table {
@@ -1102,8 +1109,8 @@ async function drawBondPriceChart() {
         datasets: [{
           label: ticker + ' · цена, % от номинала',
           data: closes,
-          borderColor: '#A8D5F0',
-          backgroundColor: 'rgba(168,213,240,0.12)',
+          borderColor: '#FFFFFF',
+          backgroundColor: 'rgba(255,255,255,0.16)',
           fill: true, tension: 0.25,
           pointRadius: 0, borderWidth: 2.2,
         }]
@@ -1121,8 +1128,8 @@ async function drawBondPriceChart() {
           }
         },
         scales: {
-          x: { ticks: { color: '#8A8F9C', maxRotation: 0, autoSkip: true, maxTicksLimit: 6, font: { size: 10 } }, grid: { display: false } },
-          y: { ticks: { color: '#8A8F9C', callback: v => v + '%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } },
+          x: { ticks: { color: 'rgba(255,255,255,0.78)', maxRotation: 0, autoSkip: true, maxTicksLimit: 6, font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: 'rgba(255,255,255,0.78)', callback: v => v + '%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.18)' } },
         },
       }
     });
@@ -1653,17 +1660,17 @@ var chartCont = document.getElementById('compareChartContainer');
       data: {
         labels: data.map(function(d) { return d.name; }),
         datasets: [
-          { label: 'Текущая дох.', data: data.map(function(d) { return d.curY ? d.curY.toFixed(2) : 0; }), backgroundColor: 'rgba(168,213,240,0.45)', borderRadius: 4 },
-          { label: 'YTM', data: data.map(function(d) { return d.ytm ? d.ytm.toFixed(2) : 0; }), backgroundColor: '#A8D5F0', borderRadius: 4 },
+          { label: 'Текущая дох.', data: data.map(function(d) { return d.curY ? d.curY.toFixed(2) : 0; }), backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 4 },
+          { label: 'YTM', data: data.map(function(d) { return d.ytm ? d.ytm.toFixed(2) : 0; }), backgroundColor: '#FFFFFF', borderRadius: 4 },
         ]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         scales: {
-          x: { ticks: { color: '#8A8F9C', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.06)' } },
-          y: { ticks: { color: '#8A8F9C', callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(255,255,255,0.06)' } }
+          x: { ticks: { color: 'rgba(255,255,255,0.78)', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.18)' } },
+          y: { ticks: { color: 'rgba(255,255,255,0.78)', callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(255,255,255,0.18)' } }
         },
-        plugins: { legend: { labels: { color: '#F6F4EF', font: { size: 11 } } } }
+        plugins: { legend: { labels: { color: '#FFFFFF', font: { size: 11 } } } }
       }
     });
   } else {
@@ -1713,17 +1720,17 @@ function renderFlows() {
     data: {
       labels,
       datasets: [
-        { label: 'Купон', data: couponData, backgroundColor: '#7BC097', borderRadius: 0 },
-        { label: 'Номинал', data: nominalData, backgroundColor: '#A8D5F0', borderRadius: 4 },
+        { label: 'Купон', data: couponData, backgroundColor: '#C7E5C4', borderRadius: 0 },
+        { label: 'Номинал', data: nominalData, backgroundColor: '#FFFFFF', borderRadius: 4 },
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       scales: {
-        x: { stacked: true, ticks: { color: '#8A8F9C', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } },
-        y: { stacked: true, ticks: { color: '#8A8F9C', callback: v => v + ' ₽' }, grid: { color: 'rgba(255,255,255,0.06)' } }
+        x: { stacked: true, ticks: { color: 'rgba(255,255,255,0.78)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.18)' } },
+        y: { stacked: true, ticks: { color: 'rgba(255,255,255,0.78)', callback: v => v + ' ₽' }, grid: { color: 'rgba(255,255,255,0.18)' } }
       },
-      plugins: { legend: { labels: { color: '#F6F4EF', font: { size: 11 } } } }
+      plugins: { legend: { labels: { color: '#FFFFFF', font: { size: 11 } } } }
     }
   });
 
