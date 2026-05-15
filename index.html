@@ -7,17 +7,43 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <!-- Шрифты подгружаются внутри investprosto-design.css (Onest + JetBrains Mono) -->
-<link rel="stylesheet" href="investprosto-design.css?v=dark1">
+<link rel="stylesheet" href="investprosto-design.css?v=graphite1">
 <style>
   /* Локальные стили вынесены в investprosto-design.css */
 
   /* Локальные правила для Облигатора (специфичные для калькулятора) */
-  .input-group { padding: 0 14px; margin-bottom: 12px; }
+  /* Поля-плитки: каждый параметр в своей цветной карточке (стиль «Голубых фишек») */
+  .input-group {
+    margin: 0 14px 8px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+  }
   .input-row {
     display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-    padding: 0 14px; margin-bottom: 12px;
+    margin: 0 14px 8px;
   }
-  .input-row .input-group { padding: 0; margin: 0; }
+  .input-row .input-group { margin: 0; }
+
+  /* Цветные тинты для плиток-полей */
+  .input-group.tint-blue  { background: rgba(168,213,240,0.13); border-color: rgba(168,213,240,0.26); }
+  .input-group.tint-mint  { background: rgba(184,229,201,0.14); border-color: rgba(184,229,201,0.28); }
+  .input-group.tint-lav   { background: rgba(201,184,255,0.14); border-color: rgba(201,184,255,0.28); }
+  .input-group.tint-cream { background: rgba(244,230,193,0.13); border-color: rgba(244,230,193,0.28); }
+  .input-group.tint-coral { background: rgba(248,181,166,0.13); border-color: rgba(248,181,166,0.28); }
+  .input-group .input-label { color: var(--text-dim); }
+
+  /* Сам инпут внутри цветной плитки — лёгкий «врез» */
+  .input-group .input-field {
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(255,255,255,0.10);
+  }
+  .input-group .input-field:focus {
+    border-color: var(--acc-blue);
+    box-shadow: 0 0 0 3px var(--acc-blue-bg);
+    background: rgba(0,0,0,0.30);
+  }
   .input-label {
     display: flex; align-items: center; gap: 6px;
     font-size: 11px; font-weight: 600;
@@ -286,7 +312,7 @@
     </div>
 
     <!-- Поиск облигации -->
-    <div class="input-group">
+    <div class="input-group tint-blue">
       <div class="input-label">Поиск облигации в MOEX</div>
       <div class="moex-search-wrap">
         <input class="input-field moex-input" type="text" id="moexSearch" placeholder="Название или тикер, напр. ОФЗ 26238" autocomplete="off">
@@ -296,7 +322,7 @@
       <div id="moexResults" class="moex-results"></div>
     </div>
 
-    <div class="input-group">
+    <div class="input-group tint-cream">
       <div class="input-label">Номинал <button class="hint-btn" data-hint="nominal">?</button></div>
       <div class="input-wrap">
         <input class="input-field" type="number" id="nominal" value="1000" step="100" min="1">
@@ -304,7 +330,7 @@
       </div>
     </div>
 
-    <div class="input-group">
+    <div class="input-group tint-mint">
       <div class="input-label">Купонная ставка <button class="hint-btn" data-hint="couponRate">?</button></div>
       <div class="input-wrap">
         <input class="input-field" type="number" id="couponRate" value="10" step="0.1" min="0" max="100">
@@ -313,11 +339,11 @@
     </div>
 
     <div class="input-row">
-      <div class="input-group">
+      <div class="input-group tint-lav">
         <div class="input-label">Купонов/год <button class="hint-btn" data-hint="couponFreq">?</button></div>
         <input class="input-field" type="number" id="couponFreq" value="2" min="1" max="12">
       </div>
-      <div class="input-group">
+      <div class="input-group tint-cream">
         <div class="input-label">Текущая цена <button class="hint-btn" data-hint="currentPrice">?</button></div>
         <div class="input-wrap">
           <input class="input-field" type="number" id="currentPrice" value="98" step="0.01" min="1">
@@ -327,27 +353,27 @@
     </div>
 
     <div class="input-row">
-      <div class="input-group">
+      <div class="input-group tint-blue">
         <div class="input-label">Дата покупки <button class="hint-btn" data-hint="purchaseDate">?</button></div>
         <input class="input-field" type="date" id="purchaseDate" value="2026-04-12">
       </div>
-      <div class="input-group">
+      <div class="input-group tint-blue">
         <div class="input-label">Погашение <button class="hint-btn" data-hint="maturityDate">?</button></div>
         <input class="input-field" type="date" id="maturityDate" value="2029-04-12">
       </div>
     </div>
 
-    <div class="input-group">
+    <div class="input-group tint-mint">
       <div class="input-label">Последний купон</div>
       <input class="input-field" type="date" id="lastCouponDate" value="2026-01-12">
     </div>
 
     <div class="input-row">
-      <div class="input-group">
+      <div class="input-group tint-lav">
         <div class="input-label">Дата оферты <button class="hint-btn" data-hint="offerDate">?</button></div>
         <input class="input-field" type="date" id="offerDate" placeholder="Не обязательно">
       </div>
-      <div class="input-group">
+      <div class="input-group tint-coral">
         <div class="input-label">Ставка НДФЛ <button class="hint-btn" data-hint="taxCoupon">?</button></div>
         <div class="input-wrap">
           <input class="input-field" type="number" id="taxRate" value="13" min="0" max="30">

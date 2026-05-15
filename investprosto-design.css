@@ -7,19 +7,19 @@
 
 /* ---------- TOKENS ---------- */
 :root {
-  /* Dark surfaces */
-  --bg-page:      #0E1116;
-  --bg-surface:   #161A21;
-  --bg-raised:    #1B1F27;
-  --bg-overlay:   #23272F;
+  /* Soft graphite surfaces — мягкий тёмный, без «угольного провала» */
+  --bg-page:      #1C1F26;
+  --bg-surface:   #242832;
+  --bg-raised:    #2B2F3A;
+  --bg-overlay:   #333845;
 
-  --line:         rgba(255,255,255,0.07);
-  --line-strong:  rgba(255,255,255,0.14);
+  --line:         rgba(255,255,255,0.09);
+  --line-strong:  rgba(255,255,255,0.16);
 
-  --text:         #F6F4EF;
-  --text-dim:     #B7BAC2;
-  --muted:        #8A8F9C;
-  --dim:          #5A606E;
+  --text:         #F4F2EC;
+  --text-dim:     #C2C4CC;
+  --muted:        #9AA0AC;
+  --dim:          #6B7280;
 
   /* Brand accents */
   --acc-blue:       #A8D5F0;
