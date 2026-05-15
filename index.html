@@ -7,7 +7,7 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <!-- Шрифты подгружаются внутри investprosto-design.css (Onest + JetBrains Mono) -->
-<link rel="stylesheet" href="investprosto-design.css?v=graphite1">
+<link rel="stylesheet" href="investprosto-design.css?v=graphite2">
 <style>
   /* Локальные стили вынесены в investprosto-design.css */
 
@@ -26,24 +26,41 @@
   }
   .input-row .input-group { margin: 0; }
 
-  /* Цветные тинты для плиток-полей */
-  .input-group.tint-blue  { background: rgba(168,213,240,0.13); border-color: rgba(168,213,240,0.26); }
-  .input-group.tint-mint  { background: rgba(184,229,201,0.14); border-color: rgba(184,229,201,0.28); }
-  .input-group.tint-lav   { background: rgba(201,184,255,0.14); border-color: rgba(201,184,255,0.28); }
-  .input-group.tint-cream { background: rgba(244,230,193,0.13); border-color: rgba(244,230,193,0.28); }
-  .input-group.tint-coral { background: rgba(248,181,166,0.13); border-color: rgba(248,181,166,0.28); }
-  .input-group .input-label { color: var(--text-dim); }
+  /* Яркие цветные плитки-поля (стиль «Голубых фишек») */
+  .input-group { border: none; }
+  .input-group.tint-blue  { background: #A8D5F0; }
+  .input-group.tint-mint  { background: #C7E5C4; }
+  .input-group.tint-lav   { background: #C9B8FF; }
+  .input-group.tint-cream { background: #F0C24A; }
+  .input-group.tint-coral { background: #F8B5A6; }
+  .input-group .input-label { color: rgba(11,11,11,0.62); }
+  .input-group .input-label .hint-btn { color: rgba(11,11,11,0.5); border-color: rgba(11,11,11,0.38); }
 
-  /* Сам инпут внутри цветной плитки — лёгкий «врез» */
+  /* Сам инпут — чёрное поле, белый шрифт */
   .input-group .input-field {
-    background: rgba(0,0,0,0.22);
-    border: 1px solid rgba(255,255,255,0.10);
+    background: #0B0B0B;
+    color: #FFFFFF;
+    border: 1px solid rgba(0,0,0,0.25);
   }
+  .input-group .input-field::placeholder { color: rgba(255,255,255,0.4); }
   .input-group .input-field:focus {
-    border-color: var(--acc-blue);
-    box-shadow: 0 0 0 3px var(--acc-blue-bg);
-    background: rgba(0,0,0,0.30);
+    border-color: #0B0B0B;
+    box-shadow: 0 0 0 3px rgba(11,11,11,0.22);
   }
+  .input-group .input-suffix { color: rgba(255,255,255,0.55); }
+  .input-group .input-field[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) opacity(0.6);
+  }
+  /* Кнопка поиска внутри яркой плитки — чёрная, в тон полю */
+  .input-group .moex-search-btn {
+    background: #0B0B0B; color: #FFFFFF;
+  }
+  .input-group .moex-search-btn:hover { background: #1C1F26; }
+  /* Результаты поиска внутри плитки — на белой подложке для читаемости */
+  .input-group .moex-results { margin-top: 8px; }
+  .input-group .moex-status { color: rgba(11,11,11,0.6); padding: 6px 0 0; }
+  .input-group .moex-status.error { color: #8a2920; }
+  .input-group .moex-status.success { color: #1f6e44; }
   .input-label {
     display: flex; align-items: center; gap: 6px;
     font-size: 11px; font-weight: 600;
