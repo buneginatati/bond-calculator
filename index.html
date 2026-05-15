@@ -1326,17 +1326,17 @@ var chartCont = document.getElementById('compareChartContainer');
       data: {
         labels: data.map(function(d) { return d.name; }),
         datasets: [
-          { label: 'Текущая дох.', data: data.map(function(d) { return d.curY ? d.curY.toFixed(2) : 0; }), backgroundColor: 'rgba(168,213,240,0.45)', borderRadius: 4 },
-          { label: 'YTM', data: data.map(function(d) { return d.ytm ? d.ytm.toFixed(2) : 0; }), backgroundColor: '#A8D5F0', borderRadius: 4 },
+          { label: 'Текущая дох.', data: data.map(function(d) { return d.curY ? d.curY.toFixed(2) : 0; }), backgroundColor: 'rgba(52,41,210,0.35)', borderRadius: 4 },
+          { label: 'YTM', data: data.map(function(d) { return d.ytm ? d.ytm.toFixed(2) : 0; }), backgroundColor: '#3429D2', borderRadius: 4 },
         ]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         scales: {
-          x: { ticks: { color: '#8A8F9C', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.06)' } },
-          y: { ticks: { color: '#8A8F9C', callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(255,255,255,0.06)' } }
+          x: { ticks: { color: '#6B5F52', font: { size: 11 } }, grid: { color: 'rgba(11,11,11,0.08)' } },
+          y: { ticks: { color: '#6B5F52', callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(11,11,11,0.08)' } }
         },
-        plugins: { legend: { labels: { color: '#F6F4EF', font: { size: 11 } } } }
+        plugins: { legend: { labels: { color: '#0B0B0B', font: { size: 11 } } } }
       }
     });
   } else {
@@ -1373,16 +1373,16 @@ function renderFlows() {
       labels,
       datasets: [
         { label: 'Купон', data: couponData, backgroundColor: '#7BC097', borderRadius: 0 },
-        { label: 'Номинал', data: nominalData, backgroundColor: '#A8D5F0', borderRadius: 4 },
+        { label: 'Номинал', data: nominalData, backgroundColor: '#3429D2', borderRadius: 4 },
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       scales: {
-        x: { stacked: true, ticks: { color: '#8A8F9C', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } },
-        y: { stacked: true, ticks: { color: '#8A8F9C', callback: v => v + ' ₽' }, grid: { color: 'rgba(255,255,255,0.06)' } }
+        x: { stacked: true, ticks: { color: '#6B5F52', font: { size: 10 } }, grid: { color: 'rgba(11,11,11,0.08)' } },
+        y: { stacked: true, ticks: { color: '#6B5F52', callback: v => v + ' ₽' }, grid: { color: 'rgba(11,11,11,0.08)' } }
       },
-      plugins: { legend: { labels: { color: '#F6F4EF', font: { size: 11 } } } }
+      plugins: { legend: { labels: { color: '#0B0B0B', font: { size: 11 } } } }
     }
   });
 
