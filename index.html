@@ -1084,18 +1084,31 @@ async function drawBondPriceChart() {
   statsEl.textContent = 'Загружаю историю цены...';
 
   try {
-    var url = MOEX_BASE + '/engines/stock/markets/bonds/securities/' + encodeURIComponent(ticker)
-      + '/candles.json?from=' + fromStr + '&interval=' + interval + '&iss.meta=off';
-    var data = await moexFetch(url);
-    var cols = data.candles.columns;
-    var rows = data.candles.data;
+    // Тянем свечи. Если на выбранном интервале (нед./мес.) пусто — пробуем дневной:
+    // у свежих и низколиквидных бумаг недельной агрегации ещё может не быть.
+    async function fetchCandles(iv) {
+      var u = MOEX_BASE + '/engines/stock/markets/bonds/securities/' + encodeURIComponent(ticker)
+        + '/candles.json?from=' + fromStr + '&interval=' + iv + '&iss.meta=off';
+      var d = await moexFetch(u);
+      return (d && d.candles && d.candles.data) ? d.candles : { columns: [], data: [] };
+    }
+
+    var candles = await fetchCandles(interval);
+    if (candles.data.length === 0 && interval !== 24) {
+      candles = await fetchCandles(24);   // дневной фолбэк
+    }
+    var cols = candles.columns;
+    var rows = candles.data;
     var iClose = cols.indexOf('close');
     var iBegin = cols.indexOf('begin');
-    var labels = rows.map(function(r) { return r[iBegin].slice(0, 10); });
-    var closes = rows.map(function(r) { return r[iClose]; });
+    var labels = [], closes = [];
+    rows.forEach(function(r) {
+      var v = r[iClose];
+      if (v != null) { labels.push(String(r[iBegin]).slice(0, 10)); closes.push(v); }
+    });
 
     if (closes.length === 0) {
-      statsEl.textContent = 'Нет данных за выбранный период.';
+      statsEl.textContent = 'У этой облигации нет биржевой истории котировок — бумага новая или низколиквидная.';
       if (BOND_PRICE_CHART) { BOND_PRICE_CHART.destroy(); BOND_PRICE_CHART = null; }
       return;
     }
