@@ -2,343 +2,335 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Калькулятор облигаций — Инвестиции просто</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Облигатор · Академия «Инвестиции просто»</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Шрифты подгружаются внутри investprosto-design.css (Onest + JetBrains Mono) -->
+<link rel="stylesheet" href="investprosto-design.css?v=ref2">
 <style>
-  :root {
-    --green: #3B3FBF;
-    --green-light: #4A4ED0;
-    --green-bg: rgba(59,63,191,0.07);
-    --green-border: rgba(59,63,191,0.15);
-    --green-border-strong: rgba(59,63,191,0.3);
-    --black: #1a1a2e;
-    --dark: #2D2F6B;
-    --muted: #6b7280;
-    --border: #ddd8ce;
-    --bg-card: #ffffff;
-    --bg-page: #F5F0E8;
-    --white: #ffffff;
-    --warm: #E5A100;
-    --warm-bg: rgba(245,200,66,0.12);
-    --warm-border: rgba(245,200,66,0.35);
-    --red: #c0392b;
-    --red-bg: rgba(192,57,43,0.06);
-    --red-border: rgba(192,57,43,0.15);
-  }
+  /* ════════ Облигатор — стиль по образцу: чёрный фон, пастельные плитки ════════ */
 
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg-page); color: var(--black);
-    min-height: 100vh; padding: 0 0 80px;
-    -webkit-font-smoothing: antialiased;
+  /* Каждый параметр — пастельная плитка, контент прямо на ней (без чёрной вставки) */
+  .input-group {
+    margin: 0 14px 10px;
+    padding: 14px 16px 16px;
+    border-radius: 22px;
+    border: none;
+    background: var(--tile-blue);
   }
-
-  /* HEADER */
-  .header {
-    padding: 28px 20px 20px; display: flex; align-items: center; gap: 14px;
-    border-bottom: 1px solid var(--border);
+  .input-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin: 0 14px 10px;
   }
-  .header-logo {
-    width: 44px; height: 44px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .header-logo svg { width: 40px; height: 40px; }
-  .header h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--black); }
-  .header p { font-size: 12px; color: var(--muted); margin-top: 2px; letter-spacing: 0.3px; text-transform: uppercase; font-weight: 500; }
+  .input-row .input-group { margin: 0; }
 
-  /* TABS */
-  .tabs {
-    display: flex; gap: 0; padding: 0 20px;
-    border-bottom: 1px solid var(--border); overflow-x: auto;
-    -webkit-overflow-scrolling: touch; scrollbar-width: none;
-  }
-  .tabs::-webkit-scrollbar { display: none; }
-  .tab {
-    padding: 14px 20px; border: none; background: transparent;
-    color: var(--muted); font-size: 13px; font-weight: 600;
-    cursor: pointer; white-space: nowrap; transition: all 0.2s;
-    border-bottom: 2px solid transparent; letter-spacing: 0.2px;
-  }
-  .tab.active { color: var(--green); border-bottom-color: var(--green); }
-  .tab:hover { color: var(--black); }
+  .input-group.tint-blue  { background: var(--tile-blue); }
+  .input-group.tint-mint  { background: var(--tile-mint); }
+  .input-group.tint-lav   { background: var(--tile-lav); }
+  .input-group.tint-cream { background: var(--tile-cream); }
+  .input-group.tint-coral { background: var(--tile-pink); }
 
-  /* CONTENT */
-  .content { padding: 20px; max-width: 600px; margin: 0 auto; }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-
-  /* SECTION */
-  .section-title {
-    font-size: 11px; font-weight: 700; color: var(--green); margin: 0 0 18px;
-    text-transform: uppercase; letter-spacing: 1.5px;
-  }
-
-  /* INPUT GROUPS */
-  .input-group { margin-bottom: 18px; }
   .input-label {
     display: flex; align-items: center; gap: 6px;
-    font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 8px;
-    text-transform: uppercase; letter-spacing: 0.6px;
+    font-size: 10.5px; font-weight: 700;
+    color: var(--on-tile-soft);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    margin-bottom: 8px;
   }
-  .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .input-group .input-label { color: var(--on-tile-soft); }
+
+  /* Поле — прозрачное, значение тёмным крупно прямо на плитке */
   .input-field {
-    width: 100%; padding: 12px 14px; background: var(--bg-card);
-    border: 1.5px solid var(--border); border-radius: 10px;
-    color: var(--black); font-size: 16px; font-weight: 600; font-family: inherit;
-    outline: none; transition: all 0.2s;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--on-tile);
+    font-family: var(--font-mono);
+    font-size: 22px; font-weight: 800;
+    letter-spacing: -0.02em;
+    padding: 0;
   }
-  .input-field:focus { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-bg), 0 1px 2px rgba(0,0,0,0.04); }
-  .input-field::placeholder { color: #c0c0c0; font-weight: 400; }
-  .input-wrap { position: relative; }
+  .input-group .input-field::placeholder { color: rgba(24,24,24,0.38); font-weight: 600; }
+  .input-group .input-field:focus { color: var(--on-tile); }
+  /* Тонкая «линия фокуса» снизу — деликатный индикатор активного поля */
+  .input-wrap, .input-group > .input-field, .input-group > .input-wrap {
+    position: relative;
+  }
+  .input-group .input-field:focus {
+    box-shadow: 0 2px 0 -1px rgba(24,24,24,0.45);
+  }
   .input-suffix {
-    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-    color: var(--muted); font-size: 13px; font-weight: 500; pointer-events: none;
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    color: var(--on-tile-soft); font-size: 14px; font-weight: 700;
+    pointer-events: none; font-family: var(--font-mono);
   }
-  .input-wrap .input-field { padding-right: 38px; }
-
-  /* HINT BUTTON */
+  .input-wrap .input-field { padding-right: 26px; }
+  .input-field[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0) opacity(0.55);
+    cursor: pointer;
+  }
   .hint-btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 18px; height: 18px; border-radius: 50%;
-    background: transparent; border: 1.5px solid var(--green-border-strong);
-    color: var(--green); font-size: 10px; font-weight: 700;
-    cursor: pointer; flex-shrink: 0; line-height: 1; transition: all 0.2s;
-  }
-  .hint-btn:hover { background: var(--green); color: var(--white); border-color: var(--green); }
-
-  /* HINT POPUP */
-  .hint-popup {
-    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 9999; align-items: flex-end; justify-content: center;
-    background: rgba(0,0,0,0.3); padding: 16px;
-  }
-  .hint-popup.show { display: flex; }
-  .hint-content {
-    background: var(--white); border: 1px solid var(--border);
-    border-radius: 16px 16px 4px 4px; padding: 24px; max-width: 400px;
-    width: 100%; font-size: 14px; line-height: 1.7; color: var(--dark);
-    max-height: 60vh; overflow-y: auto;
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
-  }
-  .hint-content b { color: var(--black); }
-  .hint-close {
-    display: block; width: 100%; margin-top: 16px; padding: 12px;
-    background: var(--green); border: none; border-radius: 8px;
-    color: var(--white); font-size: 14px; font-weight: 600; cursor: pointer;
+    background: transparent; border: 1.2px solid rgba(24,24,24,0.38);
+    color: rgba(24,24,24,0.55);
   }
 
-  /* RESULTS */
-  .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  .result-card {
-    padding: 16px 18px; border-radius: 12px; background: var(--bg-card);
-    border: 1px solid var(--border);
+  /* Поиск облигации — синяя плитка, кнопка синяя-акцент */
+  .moex-search-wrap { display: flex; gap: 8px; }
+  .moex-search-wrap .input-field {
+    flex: 1; font-size: 16px; font-weight: 600;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.55);
+    border-radius: 12px;
   }
-  .result-card.highlight {
-    background: var(--green-bg); border-color: var(--green-border-strong);
-  }
-  .result-label {
-    font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 6px;
-    display: flex; align-items: center; gap: 5px;
-    text-transform: uppercase; letter-spacing: 0.5px;
-  }
-  .result-value { font-size: 24px; font-weight: 800; color: var(--black); letter-spacing: -0.5px; }
-  .result-card.highlight .result-value { color: var(--green); }
-  .result-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
-
-  /* PRICE BOX */
-  .price-box {
-    padding: 18px 20px; border-radius: 12px; background: var(--warm-bg);
-    border: 1px solid var(--warm-border); margin-bottom: 16px;
-  }
-  .price-box h4 {
-    font-size: 11px; font-weight: 700; color: var(--warm); margin-bottom: 14px;
-    display: flex; align-items: center; gap: 6px;
-    text-transform: uppercase; letter-spacing: 1px;
-  }
-  .price-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-  .price-item-label { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; font-weight: 500; }
-  .price-item-value { font-size: 17px; font-weight: 800; margin-top: 4px; color: var(--black); }
-  .price-item-value.gold { color: #b8860b; }
-
-  /* TAX BOX */
-  .tax-box {
-    padding: 18px 20px; border-radius: 12px;
-    background: var(--red-bg); border: 1px solid var(--red-border);
-  }
-  .tax-box h4 {
-    font-size: 11px; font-weight: 700; color: var(--red); margin-bottom: 14px;
-    display: flex; align-items: center; gap: 6px;
-    text-transform: uppercase; letter-spacing: 1px;
-  }
-  .tax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .tax-total {
-    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--red-border);
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .tax-total-label { font-size: 12px; color: var(--muted); font-weight: 500; }
-  .tax-total-value { font-size: 20px; font-weight: 800; color: var(--black); }
-
-  /* COMPARE */
-  .compare-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .btn-add {
-    padding: 8px 18px; border-radius: 8px; border: 1.5px solid var(--green);
-    background: transparent; color: var(--green); font-size: 12px;
-    font-weight: 700; cursor: pointer; transition: all 0.2s; letter-spacing: 0.3px;
-  }
-  .btn-add:hover { background: var(--green); color: var(--white); }
-  .compare-card {
-    padding: 16px; border-radius: 12px; background: var(--bg-card);
-    border: 1px solid var(--border); margin-bottom: 12px;
-  }
-  .compare-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  .compare-name {
-    background: transparent; border: none; color: var(--black);
-    font-size: 15px; font-weight: 700; outline: none; width: 60%; font-family: inherit;
-  }
-  .btn-remove { background: transparent; border: none; color: var(--red); font-size: 18px; cursor: pointer; opacity: 0.5; }
-  .btn-remove:hover { opacity: 1; }
-  .compare-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-  .compare-input { font-size: 13px; }
-  .compare-input label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 3px; font-weight: 500; }
-  .compare-input input {
-    width: 100%; padding: 9px 10px; background: var(--bg-card);
-    border: 1.5px solid var(--border); border-radius: 8px;
-    color: var(--black); font-size: 14px; font-weight: 600; outline: none; font-family: inherit;
-    transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-  }
-  .compare-input input:focus { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-bg); }
-  .compare-results { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
-  .compare-res-item { text-align: center; }
-  .compare-res-label { font-size: 10px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-  .compare-res-value { font-size: 17px; font-weight: 800; color: var(--green); margin-top: 2px; }
-
-  /* MOEX SEARCH */
-  .moex-search-wrap {
-    display: flex; gap: 8px;
-  }
-  .moex-input { flex: 1; font-weight: 500 !important; font-size: 14px !important; }
   .moex-search-btn {
-    padding: 12px 20px; background: var(--green); color: var(--white);
-    border: none; border-radius: 10px; font-size: 13px; font-weight: 700;
-    cursor: pointer; white-space: nowrap; transition: all 0.2s;
-    font-family: inherit; letter-spacing: 0.3px;
+    padding: 10px 18px;
+    background: var(--acc-blue); color: #FFFFFF;
+    border: none; border-radius: 12px;
+    font-family: var(--font-sans); font-size: 14px; font-weight: 700;
+    cursor: pointer; white-space: nowrap;
   }
-  .moex-search-btn:hover { background: var(--green-light); }
-  .moex-search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .moex-results {
-    margin-top: 10px; max-height: 450px; overflow-y: auto;
-    scroll-behavior: smooth;
-  }
-  .moex-show-all-btn {
-    display: block; width: 100%; margin-top: 6px; padding: 12px;
-    background: var(--green-bg); border: 1.5px dashed var(--green-border-strong);
-    border-radius: 10px; color: var(--green); font-size: 13px;
-    font-weight: 700; cursor: pointer; font-family: inherit;
-    transition: all 0.2s; letter-spacing: 0.2px;
-  }
-  .moex-show-all-btn:hover { background: var(--green); color: var(--white); border-style: solid; }
+  .moex-search-btn:hover { background: var(--acc-blue-deep); }
+  .moex-status { font-size: 11px; color: var(--on-tile-soft); padding: 8px 0 0; font-weight: 600; }
+  .moex-status.error { color: #8a2920; }
+  .moex-status.success { color: #1a5638; }
+  .moex-results { margin-top: 8px; max-height: 280px; overflow-y: auto; }
   .moex-item {
-    padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
-    margin-bottom: 6px; cursor: pointer; transition: all 0.15s;
-    background: var(--bg-card);
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 12px; margin-bottom: 6px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.5);
+    border: none; cursor: pointer;
   }
-  .moex-item:hover { border-color: var(--green-border-strong); background: var(--green-bg); }
-  .moex-item-name { font-size: 14px; font-weight: 700; color: var(--black); }
-  .moex-item-ticker { font-size: 12px; color: var(--green); font-weight: 600; margin-left: 6px; }
-  .moex-item-details { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
-  .moex-status {
-    margin-top: 8px; font-size: 12px; color: var(--muted); min-height: 18px;
-  }
-  .moex-status.error { color: var(--red); }
-  .moex-status.success { color: var(--green); }
-
-  /* CHART */
-  .chart-container { margin-top: 20px; background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
-  .chart-container h4 { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; }
-  .chart-wrap { position: relative; width: 100%; height: 250px; }
-
-  /* FLOWS TABLE */
-  .flows-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 20px; }
-  .flows-table th {
-    padding: 10px 12px; text-align: left; color: var(--muted); font-weight: 600;
-    font-size: 10px; border-bottom: 2px solid var(--border);
-    text-transform: uppercase; letter-spacing: 0.8px;
-  }
-  .flows-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--dark); }
-  .flows-table .amount-coupon { color: var(--green); font-weight: 600; }
-  .flows-table .amount-nominal { color: var(--warm); font-weight: 600; }
-  .flows-table .amount-total { font-weight: 800; color: var(--black); }
-
-  /* FOOTER */
-  .footer {
-    margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border);
-    text-align: center; font-size: 11px; color: var(--muted); opacity: 0.6;
-    line-height: 1.7; letter-spacing: 0.2px;
-  }
-
-  /* RESPONSIVE */
-  @media (max-width: 400px) {
-    .results-grid { grid-template-columns: 1fr; }
-    .price-grid { grid-template-columns: 1fr; gap: 14px; }
-    .result-value { font-size: 20px; }
-  }
-
-
-  /* ACCESS GATE */
-  .access-gate {
-    position: fixed; inset: 0;
-    background: linear-gradient(135deg, #f3f8f5 0%, #ffffff 100%);
-    z-index: 99999;
-    display: flex; align-items: center; justify-content: center;
-    padding: 20px;
-  }
-  .access-gate-card {
-    background: white;
-    border-radius: 16px;
-    padding: 36px 28px;
-    max-width: 380px; width: 100%;
-    box-shadow: 0 10px 40px rgba(59,63,191,0.15);
+  .moex-item:hover { background: rgba(255,255,255,0.78); }
+  .moex-item-ticker {
+    min-width: 56px; padding: 4px 7px; border-radius: 7px;
+    background: var(--acc-blue); color: #FFFFFF;
+    font-family: var(--font-mono); font-weight: 700; font-size: 11px;
     text-align: center;
   }
-  .access-gate-card h2 {
-    margin: 0 0 10px;
-    color: var(--green);
-    font-size: 22px;
+  .moex-item-body { flex: 1; min-width: 0; }
+  .moex-item-name { font-size: 14px; font-weight: 700; color: var(--on-tile); }
+  .moex-item-details { font-size: 10.5px; color: var(--on-tile-soft); margin-top: 2px; }
+  .moex-item-arrow { flex-shrink: 0; width: 12px; height: 14px; color: rgba(24,24,24,0.4); }
+  .moex-show-all-btn {
+    display: block; width: 100%; margin-top: 6px; padding: 10px;
+    background: rgba(255,255,255,0.5); border: none; border-radius: 12px;
+    color: var(--acc-blue); font-family: var(--font-sans);
+    font-size: 13px; font-weight: 700; cursor: pointer;
   }
-  .access-gate-card p {
-    color: #666; margin: 0 0 22px; font-size: 14px; line-height: 1.45;
+  #studyEmitterWrap a {
+    background: var(--acc-blue) !important; color: #FFFFFF !important;
   }
-  .access-gate-card input {
-    width: 100%; padding: 14px 16px;
-    border: 2px solid #e5e5e5; border-radius: 10px;
-    font-size: 16px; margin-bottom: 12px;
-    box-sizing: border-box;
-    font-family: inherit;
+
+  /* Результаты — пастельные плитки, тёмный текст */
+  .results-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    padding: 0 14px; margin-bottom: 10px;
   }
-  .access-gate-card input:focus {
-    border-color: var(--green); outline: none;
+  .result-card {
+    background: var(--tile-mint);
+    border: none;
+    border-radius: 22px;
+    padding: 16px 18px;
   }
-  .access-gate-card button {
-    width: 100%; padding: 14px;
-    background: var(--green); color: white;
+  .results-grid:nth-of-type(odd)  .result-card:first-child { background: var(--tile-cream); }
+  .results-grid:nth-of-type(even) .result-card:first-child { background: var(--tile-lav); }
+  .result-card.highlight {
+    background: var(--acc-blue);
+    border: none;
+  }
+  .result-label {
+    font-size: 10.5px; font-weight: 700;
+    color: var(--on-tile-soft); letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .result-card.highlight .result-label { color: rgba(255,255,255,0.72); }
+  .result-value {
+    font-size: 26px; font-weight: 800; color: var(--on-tile);
+    letter-spacing: -0.025em; line-height: 1;
+    font-family: var(--font-mono);
+  }
+  .result-card.highlight .result-value { color: #FFFFFF; }
+  .result-sub { font-size: 11px; color: var(--on-tile-soft); margin-top: 4px; }
+  .result-card.highlight .result-sub { color: rgba(255,255,255,0.7); }
+  .result-card .hint-btn { color: rgba(24,24,24,0.5); border-color: rgba(24,24,24,0.35); }
+  .result-card.highlight .hint-btn { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.5); }
+
+  /* Цена и НКД — кремовая плитка */
+  .price-box {
+    margin: 0 14px 10px;
+    padding: 18px 20px;
+    background: var(--tile-cream);
+    border-radius: 24px;
+    color: var(--on-tile);
+  }
+  .price-box h4 {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--on-tile-soft);
+    margin-bottom: 14px;
+  }
+  .price-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .price-item-label {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600;
+    color: var(--on-tile-soft); letter-spacing: 0.02em;
+  }
+  .price-item-value {
+    font-size: 18px; font-weight: 800;
+    color: var(--on-tile); margin-top: 5px;
+    font-family: var(--font-mono); letter-spacing: -0.02em;
+  }
+  .price-item-value.gold { color: #7a4f00; }
+  .price-box .hint-btn { color: rgba(24,24,24,0.5); border-color: rgba(24,24,24,0.35); }
+
+  /* Налоги — розовая плитка */
+  .tax-box {
+    margin: 0 14px 10px;
+    padding: 18px 20px;
+    background: var(--tile-pink);
+    border: none;
+    border-radius: 24px;
+    color: var(--on-tile);
+  }
+  .tax-box h4 {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--on-tile-soft);
+    margin-bottom: 14px;
+  }
+  .tax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tax-total {
+    margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid rgba(24,24,24,0.15);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .tax-total-label { font-size: 12px; color: var(--on-tile-soft); font-weight: 600; }
+  .tax-total-value {
+    font-size: 20px; font-weight: 800; color: var(--on-tile);
+    font-family: var(--font-mono); letter-spacing: -0.02em;
+  }
+  .tax-box .hint-btn { color: rgba(24,24,24,0.5); border-color: rgba(24,24,24,0.35); }
+
+  /* Compare — пастельные карточки */
+  .compare-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 14px; margin-bottom: 4px;
+  }
+  .compare-card {
+    margin: 0 14px 10px;
+    padding: 16px 18px;
+    background: var(--tile-lav);
+    border: none;
+    border-radius: 20px;
+  }
+  .compare-card:nth-child(even) { background: var(--tile-mint); }
+  .compare-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+  }
+  .compare-name {
+    background: transparent; border: none; color: var(--on-tile);
+    font-size: 15px; font-weight: 800;
+    outline: none; width: 70%; font-family: var(--font-sans);
+  }
+  .btn-remove {
+    background: transparent; border: none; color: rgba(24,24,24,0.5);
+    font-size: 22px; cursor: pointer; line-height: 1;
+  }
+  .btn-remove:hover { color: #8a2920; }
+  .compare-inputs {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-bottom: 12px;
+  }
+  .compare-input label {
+    font-size: 10px; font-weight: 600;
+    color: var(--on-tile-soft); display: block;
+    margin-bottom: 4px;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .compare-input input {
+    width: 100%; padding: 9px 11px;
+    background: rgba(255,255,255,0.5);
     border: none; border-radius: 10px;
-    font-size: 16px; font-weight: 600; cursor: pointer;
-    font-family: inherit;
+    color: var(--on-tile); font-size: 14px; font-weight: 700;
+    outline: none; font-family: var(--font-mono);
   }
-  .access-gate-card button:hover { opacity: 0.9; }
-  .access-gate-error {
-    color: #c33; font-size: 13px; margin-top: 8px; min-height: 16px;
+  .compare-input input:focus { background: rgba(255,255,255,0.85); }
+  .compare-results {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    padding-top: 12px; border-top: 1px solid rgba(24,24,24,0.15);
   }
-  .access-gate-footer {
-    margin-top: 18px; font-size: 12px; color: #999;
+  .compare-res-item { text-align: center; }
+  .compare-res-label {
+    font-size: 9.5px; color: var(--on-tile-soft);
+    font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
   }
-  .access-gate-hidden { display: none !important; }
+  .compare-res-value {
+    font-size: 17px; font-weight: 800;
+    color: var(--on-tile); margin-top: 2px;
+    font-family: var(--font-mono);
+  }
+  .compare-card .moex-search-wrap input {
+    flex: 1; padding: 9px 11px; border-radius: 10px;
+    background: rgba(255,255,255,0.5); border: none;
+    color: var(--on-tile); font-family: var(--font-sans); font-size: 14px;
+    outline: none;
+  }
+  .compare-card .moex-item { background: rgba(255,255,255,0.5); }
+  .compare-card .moex-status { color: var(--on-tile-soft); }
+
+  /* Charts — на пастельной плитке */
+  .chart-container {
+    margin: 0 14px 12px;
+    background: var(--tile-blue);
+    border: none;
+    border-radius: 22px;
+    padding: 18px 20px;
+  }
+  .chart-container h4 {
+    font-size: 10.5px; font-weight: 700;
+    color: var(--on-tile-soft); margin-bottom: 14px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .chart-wrap { position: relative; width: 100%; height: 220px; }
+  .chart-period-btn {
+    padding: 5px 10px; border-radius: 999px;
+    border: 1px solid rgba(24,24,24,0.25);
+    background: transparent; color: rgba(24,24,24,0.65);
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    cursor: pointer;
+  }
+  .chart-period-btn.active { background: var(--acc-blue); color: #FFFFFF; border-color: var(--acc-blue); }
+  #bondPriceStats { color: rgba(24,24,24,0.62) !important; }
+
+  /* Flows table — на синей плитке */
+  .flows-table {
+    width: calc(100% - 28px); margin: 0 14px;
+    border-collapse: collapse; font-size: 13px;
+    font-family: var(--font-mono); color: var(--text);
+  }
+  .flows-table th {
+    padding: 10px 12px; text-align: left;
+    color: var(--muted); font-weight: 600;
+    font-size: 10px; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--line);
+    text-transform: uppercase; font-family: var(--font-sans);
+  }
+  .flows-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text-dim);
+  }
+  .flows-table .amount-coupon { color: #8FD0A5; font-weight: 700; }
+  .flows-table .amount-nominal { color: #C9B8FF; font-weight: 700; }
+  .flows-table .amount-total { font-weight: 800; color: var(--text); }
 </style>
 </head>
 <body>
@@ -360,22 +352,25 @@
 </div>
 
 <!-- HEADER -->
-<div class="header">
-  <div class="header-logo"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-  <rect width="44" height="44" rx="12" fill="#3B3FBF"/>
-  <path d="M8 22c0-4.4 3.1-8 7-8s7 3.6 7 8-3.1 8-7 8-7-3.6-7-8zm14 0c0-4.4 3.1-8 7-8s7 3.6 7 8-3.1 8-7 8-7-3.6-7-8z" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
-</svg></div>
-  <div>
-    <h1>Калькулятор облигаций</h1>
-    <p>Академия «Инвестиции просто»</p>
+<header class="header">
+  <div class="header-brand">
+    <div class="header-logo">
+      <svg viewBox="0 0 20 20" fill="none">
+        <path d="M5 4 H13 a3 3 0 0 1 0 6 H5 M5 10 H14 a3 3 0 0 1 0 6 H5 M5 4 V16 M9 4 V2 M9 18 V16 M11 4 V2 M11 18 V16" stroke="#0E1116" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Облигатор</h1>
+      <p>Анализ облигаций · Академия</p>
+    </div>
   </div>
-</div>
+</header>
 
-<!-- TABS -->
-<div class="tabs">
-  <button class="tab active" onclick="switchTab('calc')">Калькулятор</button>
-  <button class="tab" onclick="switchTab('compare')">Сравнение</button>
-  <button class="tab" onclick="switchTab('flows')">Денежные потоки</button>
+<!-- TOP TABS — скрыты, в DOM для совместимости -->
+<div class="tabs" role="tablist" aria-label="Разделы Облигатора">
+  <button class="tab active" data-tab="calc"    role="tab" aria-selected="true"  onclick="switchTab('calc')">Калькулятор</button>
+  <button class="tab"        data-tab="compare" role="tab" aria-selected="false" onclick="switchTab('compare')">Сравнение</button>
+  <button class="tab"        data-tab="flows"   role="tab" aria-selected="false" onclick="switchTab('flows')">Потоки</button>
 </div>
 
 <!-- CONTENT -->
@@ -384,20 +379,25 @@
   <!-- ===== КАЛЬКУЛЯТОР ===== -->
   <div class="tab-content active" id="tab-calc">
 
-    <div class="section-title">Параметры облигации</div>
+    <div class="screen-header">
+      <div>
+        <div class="screen-header-sub">Параметры</div>
+        <div class="screen-header-title">Параметры облигации</div>
+      </div>
+    </div>
 
     <!-- Поиск облигации -->
-    <div class="input-group">
-      <div class="input-label">Поиск облигации</div>
+    <div class="input-group tint-blue">
+      <div class="input-label">Поиск облигации в MOEX</div>
       <div class="moex-search-wrap">
         <input class="input-field moex-input" type="text" id="moexSearch" placeholder="Название или тикер, напр. ОФЗ 26238" autocomplete="off">
         <button class="moex-search-btn" id="moexSearchBtn">Найти</button>
       </div>
-      <div id="moexResults" class="moex-results"></div>
       <div id="moexStatus" class="moex-status"></div>
+      <div id="moexResults" class="moex-results"></div>
     </div>
 
-    <div class="input-group">
+    <div class="input-group tint-cream">
       <div class="input-label">Номинал <button class="hint-btn" data-hint="nominal">?</button></div>
       <div class="input-wrap">
         <input class="input-field" type="number" id="nominal" value="1000" step="100" min="1">
@@ -405,7 +405,7 @@
       </div>
     </div>
 
-    <div class="input-group">
+    <div class="input-group tint-mint">
       <div class="input-label">Купонная ставка <button class="hint-btn" data-hint="couponRate">?</button></div>
       <div class="input-wrap">
         <input class="input-field" type="number" id="couponRate" value="10" step="0.1" min="0" max="100">
@@ -414,11 +414,11 @@
     </div>
 
     <div class="input-row">
-      <div class="input-group">
+      <div class="input-group tint-lav">
         <div class="input-label">Купонов/год <button class="hint-btn" data-hint="couponFreq">?</button></div>
         <input class="input-field" type="number" id="couponFreq" value="2" min="1" max="12">
       </div>
-      <div class="input-group">
+      <div class="input-group tint-cream">
         <div class="input-label">Текущая цена <button class="hint-btn" data-hint="currentPrice">?</button></div>
         <div class="input-wrap">
           <input class="input-field" type="number" id="currentPrice" value="98" step="0.01" min="1">
@@ -428,27 +428,27 @@
     </div>
 
     <div class="input-row">
-      <div class="input-group">
+      <div class="input-group tint-blue">
         <div class="input-label">Дата покупки <button class="hint-btn" data-hint="purchaseDate">?</button></div>
         <input class="input-field" type="date" id="purchaseDate" value="2026-04-12">
       </div>
-      <div class="input-group">
+      <div class="input-group tint-blue">
         <div class="input-label">Погашение <button class="hint-btn" data-hint="maturityDate">?</button></div>
         <input class="input-field" type="date" id="maturityDate" value="2029-04-12">
       </div>
     </div>
 
-    <div class="input-group">
+    <div class="input-group tint-mint">
       <div class="input-label">Последний купон</div>
       <input class="input-field" type="date" id="lastCouponDate" value="2026-01-12">
     </div>
 
     <div class="input-row">
-      <div class="input-group">
+      <div class="input-group tint-lav">
         <div class="input-label">Дата оферты <button class="hint-btn" data-hint="offerDate">?</button></div>
         <input class="input-field" type="date" id="offerDate" placeholder="Не обязательно">
       </div>
-      <div class="input-group">
+      <div class="input-group tint-coral">
         <div class="input-label">Ставка НДФЛ <button class="hint-btn" data-hint="taxCoupon">?</button></div>
         <div class="input-wrap">
           <input class="input-field" type="number" id="taxRate" value="13" min="0" max="30">
@@ -458,7 +458,12 @@
     </div>
 
     <!-- РЕЗУЛЬТАТЫ -->
-    <div class="section-title" style="margin-top:28px">Результаты анализа</div>
+    <div class="screen-header" style="margin-top: 20px;">
+      <div>
+        <div class="screen-header-sub">Результаты</div>
+        <div class="screen-header-title">Анализ</div>
+      </div>
+    </div>
 
     <div class="results-grid">
       <div class="result-card">
@@ -534,43 +539,80 @@
         <span class="tax-total-value" id="res-ytmAfterTax">—</span>
       </div>
     </div>
+
+    <!-- ГРАФИК ЦЕНЫ ОБЛИГАЦИИ -->
+    <div class="chart-container" id="bondPriceBlock" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <h4 style="margin:0;">Динамика цены</h4>
+        <div id="bondPricePeriods" style="display:flex; gap:4px;"></div>
+      </div>
+      <div class="chart-wrap" style="height:220px;"><canvas id="bondPriceChart"></canvas></div>
+      <div id="bondPriceStats" style="margin-top:10px; font-size:11px; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-family: var(--font-mono);"></div>
+    </div>
+
   </div>
 
-  <!-- ===== СРАВНЕНИЕ ===== -->
   <div class="tab-content" id="tab-compare">
-    <div class="compare-header">
-      <div class="section-title" style="margin:0">Сравнение облигаций</div>
-      <button class="btn-add" onclick="addBond()">+ Добавить</button>
+    <div class="screen-header">
+      <div>
+        <div class="screen-header-sub">Сравнение</div>
+        <div class="screen-header-title">Бок о бок</div>
+      </div>
+      <button class="btn-ghost" onclick="addBond()">+ облигацию</button>
     </div>
     <div id="compareBonds"></div>
     <div class="chart-container" id="compareChartContainer" style="display:none">
       <h4>Сравнение доходностей</h4>
       <div class="chart-wrap"><canvas id="compareChart"></canvas></div>
-    
-    <div id="compareSummaryTable"></div></div>
+      <div id="compareSummaryTable" style="margin-top: 14px;"></div>
+    </div>
   </div>
 
   <!-- ===== ДЕНЕЖНЫЕ ПОТОКИ ===== -->
   <div class="tab-content" id="tab-flows">
-    <div class="section-title">Денежные потоки</div>
-    <div id="flowsBondName" style="font-size:15px;font-weight:700;color:var(--dark);margin-bottom:6px"></div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">
-      Все выплаты по облигации — купоны и возврат номинала при погашении
+    <div class="screen-header">
+      <div>
+        <div class="screen-header-sub">Денежные потоки</div>
+        <div class="screen-header-title" id="flowsBondName">Все выплаты</div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin: 0 14px 8px;line-height:1.5">
+      Купоны и возврат номинала при погашении — по датам.
     </p>
+    <div id="flowsAmortBanner" class="info-banner" style="display:none;">
+      <span class="info-glyph">i</span>
+      <span id="flowsAmortNote"></span>
+    </div>
     <div class="chart-container">
       <div class="chart-wrap"><canvas id="flowsChart"></canvas></div>
     </div>
     <table class="flows-table" id="flowsTable">
-      <thead><tr><th>Дата</th><th>Купон</th><th>Номинал</th><th>Итого</th></tr></thead>
+      <thead><tr><th>Дата</th><th style="text-align:right">Купон</th><th style="text-align:right">Номинал</th><th style="text-align:right">Итого</th></tr></thead>
       <tbody id="flowsBody"></tbody>
     </table>
   </div>
 
   <div class="footer">
-    Академия «Инвестиции просто» · Калькулятор облигаций<br>
-    Данные носят информационный характер и не являются инвестиционной рекомендацией
+    16+ · Академия «Инвестиции просто» · Облигатор · v3.0<br>
+    Данные носят информационный характер и не являются индивидуальной инвестиционной рекомендацией
   </div>
 </div>
+
+<!-- BOTTOM TAB BAR -->
+<nav class="bottom-tabs" aria-label="Главная навигация">
+  <button class="bottom-tab active" data-tab="calc" onclick="switchTab('calc')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7 H16 M8 12 H10 M12 12 H14 M16 12 V16 M8 16 H10 M12 16 H14"/></svg>
+    <span>Калькулятор</span>
+  </button>
+  <button class="bottom-tab" data-tab="compare" onclick="switchTab('compare')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="8" height="12" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/></svg>
+    <span>Сравнение</span>
+  </button>
+  <button class="bottom-tab" data-tab="flows" onclick="switchTab('flows')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 L4 14 M9 20 L9 10 M14 20 L14 6 M19 20 L19 12"/></svg>
+    <span>Потоки</span>
+  </button>
+</nav>
 
 <script>
 // ==================== ACCESS GATE (Telegram + Supabase) ====================
@@ -772,34 +814,28 @@ function renderMoexResults(bonds) {
   var showAll = bonds.length <= INITIAL_SHOW;
   var toRender = showAll ? bonds : bonds.slice(0, INITIAL_SHOW);
 
-  results.innerHTML = toRender.map(function(b) {
+  function renderItem(b) {
     var secid = escHtml(b.secid || '');
     var shortname = escHtml(b.shortname || b.name || 'Без названия');
     var fullname = escHtml(b.name || '');
-    var isin = b.isin ? ' · ISIN: ' + escHtml(b.isin) : '';
-    return '<div class="moex-item" onclick="loadBondFromMoex(\'' + secid + '\')">' +
-      '<span class="moex-item-name">' + shortname + '</span>' +
-      '<span class="moex-item-ticker">' + secid + '</span>' +
-      '<div class="moex-item-details">' + fullname + isin + '</div>' +
-    '</div>';
-  }).join('');
+    var isin = b.isin ? ' · ' + escHtml(b.isin) : '';
+    return '<div class="moex-item" onclick="loadBondFromMoex(\'' + secid + '\')">'
+      + '<div class="moex-item-ticker">' + secid + '</div>'
+      + '<div class="moex-item-body">'
+      +   '<div class="moex-item-name">' + shortname + '</div>'
+      +   '<div class="moex-item-details">' + fullname + isin + '</div>'
+      + '</div>'
+      + '<svg class="moex-item-arrow" viewBox="0 0 12 14"><path d="M2 1l8 6-8 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      + '</div>';
+  }
+
+  results.innerHTML = toRender.map(renderItem).join('');
 
   if (!showAll) {
     var remaining = bonds.length - INITIAL_SHOW;
     results.innerHTML += '<button class="moex-show-all-btn" id="moexShowAllBtn">Показать ещё ' + remaining + '</button>';
     document.getElementById('moexShowAllBtn').addEventListener('click', function() {
-      // Рендерим остаток
-      var rest = bonds.slice(INITIAL_SHOW).map(function(b) {
-        var secid = escHtml(b.secid || '');
-        var shortname = escHtml(b.shortname || b.name || 'Без названия');
-        var fullname = escHtml(b.name || '');
-        var isin = b.isin ? ' · ISIN: ' + escHtml(b.isin) : '';
-        return '<div class="moex-item" onclick="loadBondFromMoex(\'' + secid + '\')">' +
-          '<span class="moex-item-name">' + shortname + '</span>' +
-          '<span class="moex-item-ticker">' + secid + '</span>' +
-          '<div class="moex-item-details">' + fullname + isin + '</div>' +
-        '</div>';
-      }).join('');
+      var rest = bonds.slice(INITIAL_SHOW).map(renderItem).join('');
       this.remove();
       results.insertAdjacentHTML('beforeend', rest);
     });
@@ -924,7 +960,14 @@ async function loadBondFromMoex(secid) {
       window._moexCouponPeriod = sec.COUPONPERIOD;
     }
 
+    // Подтягиваем полную сетку купонов и амортизаций — нужна для правильного YTM,
+    // дюрации и cashflow у бумаг с амортизацией (например ОФЗ-АД) и переменными купонами.
+    await loadBondizationSchedule(secid);
+
     recalc();
+
+    // Загружаем график цены параллельно (не блокирует UI)
+    loadBondPriceChart(secid);
 
     var bondName = escHtml(sec.SHORTNAME || sec.SECNAME || secid);
     window._loadedBondName = sec.SHORTNAME || sec.SECNAME || secid;
@@ -989,13 +1032,128 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+// ==================== ГРАФИК ЦЕНЫ ОБЛИГАЦИИ ====================
+var BOND_PRICE_CHART = null;
+var BOND_PRICE_TICKER = null;
+var BOND_PRICE_PERIOD = '1Y';
+const BOND_PERIODS = [
+  { code: '1M', label: '1 мес', days: 30 },
+  { code: '3M', label: '3 мес', days: 90 },
+  { code: '6M', label: '6 мес', days: 180 },
+  { code: '1Y', label: '1 год', days: 365 },
+  { code: 'MAX', label: '5 лет', days: 365 * 5 },
+];
+
+function loadBondPriceChart(secid) {
+  BOND_PRICE_TICKER = secid;
+  document.getElementById('bondPriceBlock').style.display = 'block';
+  var ctrl = document.getElementById('bondPricePeriods');
+  ctrl.innerHTML = BOND_PERIODS.map(function(p) {
+    return '<button class="chart-period-btn ' + (p.code === BOND_PRICE_PERIOD ? 'active' : '')
+      + '" onclick="setBondPeriod(\'' + p.code + '\')">' + p.label + '</button>';
+  }).join('');
+  drawBondPriceChart();
+}
+
+function setBondPeriod(code) {
+  BOND_PRICE_PERIOD = code;
+  document.querySelectorAll('#bondPricePeriods .chart-period-btn').forEach(function(b) {
+    b.classList.toggle('active', b.textContent === (BOND_PERIODS.find(function(p) { return p.code === code; }) || {}).label);
+  });
+  drawBondPriceChart();
+}
+
+async function drawBondPriceChart() {
+  var ticker = BOND_PRICE_TICKER;
+  if (!ticker) return;
+  var period = BOND_PERIODS.find(function(p) { return p.code === BOND_PRICE_PERIOD; }) || BOND_PERIODS[3];
+  var to = new Date();
+  var from = new Date(to.getTime() - period.days * 86400000);
+  var fromStr = from.toISOString().slice(0, 10);
+  // MOEX интервалы: 24=день, 7=неделя, 31=месяц
+  var interval = period.days <= 180 ? 24 : (period.days <= 1095 ? 7 : 31);
+
+  var statsEl = document.getElementById('bondPriceStats');
+  statsEl.textContent = 'Загружаю историю цены...';
+
+  try {
+    var url = MOEX_BASE + '/engines/stock/markets/bonds/securities/' + encodeURIComponent(ticker)
+      + '/candles.json?from=' + fromStr + '&interval=' + interval + '&iss.meta=off';
+    var data = await moexFetch(url);
+    var cols = data.candles.columns;
+    var rows = data.candles.data;
+    var iClose = cols.indexOf('close');
+    var iBegin = cols.indexOf('begin');
+    var labels = rows.map(function(r) { return r[iBegin].slice(0, 10); });
+    var closes = rows.map(function(r) { return r[iClose]; });
+
+    if (closes.length === 0) {
+      statsEl.textContent = 'Нет данных за выбранный период.';
+      if (BOND_PRICE_CHART) { BOND_PRICE_CHART.destroy(); BOND_PRICE_CHART = null; }
+      return;
+    }
+
+    var ctx = document.getElementById('bondPriceChart').getContext('2d');
+    if (BOND_PRICE_CHART) BOND_PRICE_CHART.destroy();
+    BOND_PRICE_CHART = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: ticker + ' · цена, % от номинала',
+          data: closes,
+          borderColor: '#A8D5F0',
+          backgroundColor: 'rgba(168,213,240,0.12)',
+          fill: true, tension: 0.25,
+          pointRadius: 0, borderWidth: 2.2,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#23272F', titleColor: '#F6F4EF', bodyColor: '#F6F4EF',
+            displayColors: false,
+            callbacks: {
+              label: function(ctx) { return Number(ctx.raw).toFixed(2) + '%'; }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#8A8F9C', maxRotation: 0, autoSkip: true, maxTicksLimit: 6, font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: '#8A8F9C', callback: v => v + '%', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } },
+        },
+      }
+    });
+
+    var first = closes[0], last = closes[closes.length - 1];
+    var min = Math.min.apply(null, closes), max = Math.max.apply(null, closes);
+    var diff = last - first, diffPct = (diff / first) * 100;
+    var diffSign = diff >= 0 ? '+' : '';
+    var diffColor = diff >= 0 ? '#1F6E44' : '#8A2920';
+    statsEl.innerHTML =
+      '<span>мин <b>' + min.toFixed(2) + '%</b></span>' +
+      '<span style="color:' + diffColor + ';">Δ ' + diffSign + diffPct.toFixed(2) + '%</span>' +
+      '<span>макс <b>' + max.toFixed(2) + '%</b></span>';
+  } catch (err) {
+    statsEl.textContent = 'Не удалось загрузить историю цены.';
+    console.error('bond price chart fail', err);
+  }
+}
+
 // ==================== TABS ====================
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', ['calc','compare','flows'][i] === tab));
+  document.querySelectorAll('.tab, .bottom-tab').forEach(t => {
+    var on = t.dataset && t.dataset.tab === tab;
+    t.classList.toggle('active', on);
+    if (t.hasAttribute('aria-selected')) t.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   if (tab === 'compare') renderCompare();
   if (tab === 'flows') renderFlows();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ==================== РАСЧЁТЫ ====================
@@ -1007,30 +1165,125 @@ function daysBetween(d1, d2) {
 }
 function yearFrac(d1, d2) { return daysBetween(d1, d2) / 365; }
 
+// MOEX bondization — точная сетка купонов и амортизаций для загруженной облигации.
+// Заполняется в loadBondizationSchedule, очищается при ручном редактировании полей.
+async function loadBondizationSchedule(secid) {
+  window._moexBondization = null;
+  try {
+    var url = MOEX_BASE + '/securities/' + encodeURIComponent(secid) + '/bondization.json?iss.meta=off&limit=100';
+    var bz = await moexFetch(url);
+    var coupons = [];
+    var amortizations = [];
+
+    if (bz.coupons && bz.coupons.columns && bz.coupons.data) {
+      var cCols = bz.coupons.columns;
+      var i_cd = cCols.indexOf('coupondate');
+      var i_cv = cCols.indexOf('value');
+      var i_cvp = cCols.indexOf('valueprc');
+      var i_face = cCols.indexOf('initialfacevalue');
+      bz.coupons.data.forEach(function(r) {
+        var date = r[i_cd];
+        var val = r[i_cv];
+        var valPrc = i_cvp >= 0 ? r[i_cvp] : null;
+        if (!date) return;
+        coupons.push({
+          date: date,
+          value: (val !== null && val !== '' && val !== undefined) ? Number(val) : null,
+          valuePrc: (valPrc !== null && valPrc !== '' && valPrc !== undefined) ? Number(valPrc) : null,
+          face: (i_face >= 0) ? Number(r[i_face]) : null
+        });
+      });
+    }
+
+    if (bz.amortizations && bz.amortizations.columns && bz.amortizations.data) {
+      var aCols = bz.amortizations.columns;
+      var i_ad = aCols.indexOf('amortdate');
+      var i_av = aCols.indexOf('value_rub');
+      if (i_av < 0) i_av = aCols.indexOf('value');
+      var i_avp = aCols.indexOf('valueprc');
+      var i_aface = aCols.indexOf('facevalue');
+      bz.amortizations.data.forEach(function(r) {
+        var date = r[i_ad];
+        if (!date) return;
+        amortizations.push({
+          date: date,
+          value: (i_av >= 0 && r[i_av] !== null && r[i_av] !== '') ? Number(r[i_av]) : null,
+          valuePrc: (i_avp >= 0 && r[i_avp] !== null && r[i_avp] !== '') ? Number(r[i_avp]) : null,
+          faceAfter: (i_aface >= 0) ? Number(r[i_aface]) : null
+        });
+      });
+    }
+
+    window._moexBondization = {
+      secid: secid,
+      coupons: coupons,
+      amortizations: amortizations,
+      hasAmortization: amortizations.length > 1
+    };
+    console.log('Bondization loaded', secid, 'coupons:', coupons.length, 'amorts:', amortizations.length);
+  } catch (err) {
+    console.warn('Bondization fetch failed for ' + secid + ':', err);
+  }
+}
+
 function calcCashflows(nom, cr, freq, pDate, eDate) {
-  const cpp = (nom * cr / 100) / freq;
-  const pDays = Math.round(365 / freq);
-  const flows = [];
   const purchase = new Date(pDate);
   const end = new Date(eDate);
+  const flows = [];
 
-  // Если есть данные о следующем купоне от MOEX — строим от него
+  // 1) Если есть точная сетка с MOEX (bondization) — используем её. Это критично для
+  // облигаций с амортизацией и переменными купонами.
+  var bz = window._moexBondization;
+  if (bz && (bz.coupons.length || bz.amortizations.length)) {
+    // Аккумулируем cashflow по дате (купон + амортизация в один день складываются)
+    var byDate = {};
+    bz.coupons.forEach(function(c) {
+      var d = c.date;
+      if (!d) return;
+      var dt = new Date(d);
+      if (dt <= purchase || dt > end) return;
+      var cpn = c.value;
+      // Если value пустое — считаем из ставки и периода (фиксированный купон)
+      if (cpn === null || cpn === undefined || isNaN(cpn)) cpn = (nom * cr / 100) / freq;
+      if (!byDate[d]) byDate[d] = { date: dt, coupon: 0, nominal: 0 };
+      byDate[d].coupon += cpn;
+    });
+    bz.amortizations.forEach(function(a) {
+      var d = a.date;
+      if (!d) return;
+      var dt = new Date(d);
+      if (dt <= purchase || dt > end) return;
+      var amt = a.value;
+      // value может быть null для будущих амортизаций по плавающим — но у фикс. бумаг есть
+      if ((amt === null || amt === undefined || isNaN(amt)) && a.valuePrc !== null) {
+        amt = nom * (a.valuePrc / 100);
+      }
+      if (!amt || isNaN(amt)) return;
+      if (!byDate[d]) byDate[d] = { date: dt, coupon: 0, nominal: 0 };
+      byDate[d].nominal += amt;
+    });
+    var keys = Object.keys(byDate).sort();
+    keys.forEach(function(k) { flows.push(byDate[k]); });
+    if (flows.length > 0) return flows;
+    // Если по какой-то причине ничего не получилось — фоллбэк ниже.
+  }
+
+  // 2) Фоллбэк: классический формульный расчёт для ручного ввода / без MOEX.
+  const cpp = (nom * cr / 100) / freq;
+  const pDays = Math.round(365 / freq);
   var startDate;
   if (window._moexNextCoupon && window._moexCouponPeriod) {
     startDate = new Date(window._moexNextCoupon);
-    // Откатываемся назад, чтобы найти первый купон после покупки
     while (startDate > purchase) {
       var prev = new Date(startDate);
       prev.setDate(prev.getDate() - window._moexCouponPeriod);
       if (prev <= purchase) break;
       startDate = prev;
     }
-    // Если startDate оказался ДО покупки — вперёд на 1 период
     if (startDate <= purchase) {
       startDate.setDate(startDate.getDate() + window._moexCouponPeriod);
     }
   } else {
-    // Фоллбэк: от даты покупки + период
     startDate = new Date(purchase);
     startDate.setDate(startDate.getDate() + pDays);
   }
@@ -1400,17 +1653,17 @@ var chartCont = document.getElementById('compareChartContainer');
       data: {
         labels: data.map(function(d) { return d.name; }),
         datasets: [
-          { label: 'Текущая дох.', data: data.map(function(d) { return d.curY ? d.curY.toFixed(2) : 0; }), backgroundColor: 'rgba(59,63,191,0.3)', borderRadius: 4 },
-          { label: 'YTM', data: data.map(function(d) { return d.ytm ? d.ytm.toFixed(2) : 0; }), backgroundColor: 'rgba(59,63,191,0.85)', borderRadius: 4 },
+          { label: 'Текущая дох.', data: data.map(function(d) { return d.curY ? d.curY.toFixed(2) : 0; }), backgroundColor: 'rgba(168,213,240,0.45)', borderRadius: 4 },
+          { label: 'YTM', data: data.map(function(d) { return d.ytm ? d.ytm.toFixed(2) : 0; }), backgroundColor: '#A8D5F0', borderRadius: 4 },
         ]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         scales: {
-          x: { ticks: { color: '#6b7280', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
-          y: { ticks: { color: '#6b7280', callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(0,0,0,0.05)' } }
+          x: { ticks: { color: '#8A8F9C', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.06)' } },
+          y: { ticks: { color: '#8A8F9C', callback: function(v) { return v + '%'; } }, grid: { color: 'rgba(255,255,255,0.06)' } }
         },
-        plugins: { legend: { labels: { color: '#333', font: { size: 11 } } } }
+        plugins: { legend: { labels: { color: '#F6F4EF', font: { size: 11 } } } }
       }
     });
   } else {
@@ -1432,7 +1685,21 @@ function renderFlows() {
   if (nameEl) {
     const bName = window._loadedBondName || '';
     const bTicker = window._loadedBondTicker || '';
-    nameEl.textContent = bName ? (bName + (bTicker ? ' · ' + bTicker : '')) : '';
+    nameEl.textContent = bName ? (bName + (bTicker ? ' · ' + bTicker : '')) : 'Все выплаты';
+  }
+
+  // Если у бумаги амортизация — выводим инфо-баннер
+  var bz = window._moexBondization;
+  const banner = document.getElementById('flowsAmortBanner');
+  const noteEl = document.getElementById('flowsAmortNote');
+  if (banner && noteEl) {
+    if (bz && bz.hasAmortization) {
+      banner.style.display = 'flex';
+      noteEl.innerHTML = '<b>Амортизируемая облигация:</b> номинал возвращается частями по графику ниже, ' +
+        bz.amortizations.length + ' выплат суммарно. Купон считается от уменьшающегося номинала.';
+    } else {
+      banner.style.display = 'none';
+    }
   }
 
   const flows = calcCashflows(nom, cr, freq, pDate, mDate);
@@ -1446,17 +1713,17 @@ function renderFlows() {
     data: {
       labels,
       datasets: [
-        { label: 'Купон', data: couponData, backgroundColor: 'rgba(59,63,191,0.7)', borderRadius: 0 },
-        { label: 'Номинал', data: nominalData, backgroundColor: 'rgba(59,63,191,0.6)', borderRadius: 4 },
+        { label: 'Купон', data: couponData, backgroundColor: '#7BC097', borderRadius: 0 },
+        { label: 'Номинал', data: nominalData, backgroundColor: '#A8D5F0', borderRadius: 4 },
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       scales: {
-        x: { stacked: true, ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
-        y: { stacked: true, ticks: { color: '#6b7280', callback: v => v + ' ₽' }, grid: { color: 'rgba(0,0,0,0.05)' } }
+        x: { stacked: true, ticks: { color: '#8A8F9C', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } },
+        y: { stacked: true, ticks: { color: '#8A8F9C', callback: v => v + ' ₽' }, grid: { color: 'rgba(255,255,255,0.06)' } }
       },
-      plugins: { legend: { labels: { color: '#333', font: { size: 11 } } } }
+      plugins: { legend: { labels: { color: '#F6F4EF', font: { size: 11 } } } }
     }
   });
 
@@ -1474,16 +1741,25 @@ function renderFlows() {
 }
 
 // ==================== INIT ====================
+function resetMoexCache() {
+  window._moexNextCoupon = null;
+  window._moexCouponPeriod = null;
+  window._moexBondization = null;
+  // График цены тоже скрываем — он привязан к конкретной MOEX-облигации
+  BOND_PRICE_TICKER = null;
+  if (BOND_PRICE_CHART) { BOND_PRICE_CHART.destroy(); BOND_PRICE_CHART = null; }
+  var blk = document.getElementById('bondPriceBlock');
+  if (blk) blk.style.display = 'none';
+}
 document.querySelectorAll('.input-field').forEach(el => {
+  // Поиск MOEX не должен сбрасывать кеш загруженной облигации
+  if (el.id === 'moexSearch') return;
   el.addEventListener('input', function() {
-    // Сбрасываем MOEX-кеш при ручном редактировании
-    window._moexNextCoupon = null;
-    window._moexCouponPeriod = null;
+    resetMoexCache();
     recalc();
   });
   el.addEventListener('change', function() {
-    window._moexNextCoupon = null;
-    window._moexCouponPeriod = null;
+    resetMoexCache();
     recalc();
   });
 });
